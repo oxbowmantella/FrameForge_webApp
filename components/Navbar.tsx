@@ -76,8 +76,8 @@ const builds: { title: string; href: string; description: string }[] = [
 export function Navbar() {
   return (
     <div className="w-full">
-      <div className="max-w-8xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-8xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
+        <div className="flex items-end justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Logo className="h-16 w-16" />
@@ -153,7 +153,7 @@ export function Navbar() {
                       "text-lg font-orbitron "
                     )}
                   >
-                    Community Builds
+                    Feed
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
