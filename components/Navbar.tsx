@@ -2,8 +2,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { MonitorDot, ShoppingCart } from "lucide-react";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -77,97 +75,90 @@ export function Navbar() {
   return (
     <div className="w-full">
       <div className="max-w-8xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between h-16">
+        <div className="flex items-end justify-between h-16 gap-96">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Logo className="h-16 w-16" />
           </Link>
 
           {/* Navigation Menu */}
-          <NavigationMenu>
-            <NavigationMenuList className="gap-8">
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="text-lg font-orbitron">
-                  PC Builder
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                    <li className="row-span-3">
-                      <NavigationMenuLink asChild>
-                        <a
-                          className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                          href="/pc-builder"
-                        >
-                          <Logo className="h-12 w-12" />
-                          <div className="mb-2 mt-4 text-lg font-medium">
-                            Start Building
-                          </div>
-                          <p className="text-sm leading-tight text-muted-foreground">
-                            Create your custom PC build with our interactive
-                            builder. Choose from a wide range of compatible
-                            components.
-                          </p>
-                        </a>
-                      </NavigationMenuLink>
-                    </li>
-                    <ListItem href="/guides" title="Building Guides">
-                      Step-by-step guides for assembling your perfect PC.
-                    </ListItem>
-                    <ListItem
-                      href="/compatibility"
-                      title="Compatibility Checker"
-                    >
-                      Ensure all your chosen components work together.
-                    </ListItem>
-                    <ListItem href="/price-tracker" title="Price Tracker">
-                      Track prices and find the best deals on components.
-                    </ListItem>
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="text-lg font-orbitron ">
-                  Components
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {pcComponents.map((component) => (
-                      <ListItem
-                        key={component.title}
-                        title={component.title}
-                        href={component.href}
-                      >
-                        {component.description}
+          <div className="flex-1 flex justify-start">
+            <NavigationMenu>
+              <NavigationMenuList className="gap-8">
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="text-lg font-orbitron">
+                    PC Builder
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+                      <li className="row-span-3">
+                        <NavigationMenuLink asChild>
+                          <a
+                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                            href="/pc-builder"
+                          >
+                            <Logo className="h-12 w-12" />
+                            <div className="mb-2 mt-4 text-lg font-medium">
+                              Start Building
+                            </div>
+                            <p className="text-sm leading-tight text-muted-foreground">
+                              Create your custom PC build with our interactive
+                              builder. Choose from a wide range of compatible
+                              components.
+                            </p>
+                          </a>
+                        </NavigationMenuLink>
+                      </li>
+                      <ListItem href="/guides" title="Building Guides">
+                        Step-by-step guides for assembling your perfect PC.
                       </ListItem>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+                      <ListItem
+                        href="/compatibility"
+                        title="Compatibility Checker"
+                      >
+                        Ensure all your chosen components work together.
+                      </ListItem>
+                      <ListItem href="/price-tracker" title="Price Tracker">
+                        Track prices and find the best deals on components.
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
 
-              <NavigationMenuItem>
-                <Link href="/community" legacyBehavior passHref>
-                  <NavigationMenuLink
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      "text-lg font-orbitron "
-                    )}
-                  >
-                    Feed
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="text-lg font-orbitron ">
+                    Components
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      {pcComponents.map((component) => (
+                        <ListItem
+                          key={component.title}
+                          title={component.title}
+                          href={component.href}
+                        >
+                          {component.description}
+                        </ListItem>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
 
-          {/* Login Button */}
-          <Button
-            variant="default"
-            className="bg-black hover:bg-gray-800 text-white flex items-center space-x-2"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            <span>Login</span>
-          </Button>
+                <NavigationMenuItem>
+                  <Link href="/community" legacyBehavior passHref>
+                    <NavigationMenuLink
+                      className={cn(
+                        navigationMenuTriggerStyle(),
+                        "text-lg font-orbitron "
+                      )}
+                    >
+                      Feed
+                    </NavigationMenuLink>
+                  </Link>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
         </div>
       </div>
     </div>
