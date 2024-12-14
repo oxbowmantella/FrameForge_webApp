@@ -11,9 +11,11 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
 import Logo from "./Logo";
 
-const pcComponents: { title: string; href: string; description: string }[] = [
+const pcComponents = [
   {
     title: "Processors (CPU)",
     href: "/components/cpu",
@@ -51,7 +53,7 @@ const pcComponents: { title: string; href: string; description: string }[] = [
   },
 ];
 
-const builds: { title: string; href: string; description: string }[] = [
+const builds = [
   {
     title: "Gaming PC",
     href: "/builds/gaming",
@@ -75,14 +77,14 @@ export function Navbar() {
   return (
     <div className="w-full">
       <div className="max-w-8xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between h-16 gap-96">
+        <div className="flex items-end justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Logo className="h-16 w-16" />
           </Link>
 
-          {/* Navigation Menu */}
-          <div className="flex-1 flex justify-start">
+          {/* Desktop Navigation Menu */}
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
             <NavigationMenu>
               <NavigationMenuList className="gap-8">
                 <NavigationMenuItem>
@@ -126,7 +128,7 @@ export function Navbar() {
                 </NavigationMenuItem>
 
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-lg font-orbitron ">
+                  <NavigationMenuTrigger className="text-lg font-orbitron">
                     Components
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -149,7 +151,7 @@ export function Navbar() {
                     <NavigationMenuLink
                       className={cn(
                         navigationMenuTriggerStyle(),
-                        "text-lg font-orbitron "
+                        "text-lg font-orbitron"
                       )}
                     >
                       Feed
@@ -158,6 +160,70 @@ export function Navbar() {
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="lg:hidden flex items-center">
+            <Sheet>
+              <SheetTrigger className="p-2">
+                <Menu className="h-6 w-6" />
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <div className="flex flex-col gap-8 pt-10">
+                  <div className="flex flex-col gap-6">
+                    <h3 className="text-lg font-orbitron">PC Builder</h3>
+                    <div className="flex flex-col gap-4 pl-4">
+                      <Link
+                        href="/pc-builder"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Start Building
+                      </Link>
+                      <Link
+                        href="/guides"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Building Guides
+                      </Link>
+                      <Link
+                        href="/compatibility"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Compatibility Checker
+                      </Link>
+                      <Link
+                        href="/price-tracker"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Price Tracker
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-6">
+                    <h3 className="text-lg font-orbitron">Components</h3>
+                    <div className="flex flex-col gap-4 pl-4">
+                      {pcComponents.map((component) => (
+                        <Link
+                          key={component.title}
+                          href={component.href}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {component.title}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/community"
+                    className="text-lg font-orbitron hover:text-foreground transition-colors"
+                  >
+                    Feed
+                  </Link>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
