@@ -8,7 +8,10 @@ import { useState } from "react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
-  const handleSignIn = async () => {};
+  const router = useRouter();
+  const handleSignIn = async () => {
+    router.push("/pc-builder");
+  };
 
   return (
     <div className="flex h-[calc(100vh-80px)] flex-col items-center justify-center bg-background px-4 overflow-x-hidden">
