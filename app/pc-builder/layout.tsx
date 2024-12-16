@@ -42,8 +42,8 @@ export default function PCBuilderLayout({
   const pathname = usePathname();
   const [gifKey, setGifKey] = useState(0);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const totalBudget = 3500;
-  const usedBudget = 1405;
+  const totalBudget = 0;
+  const usedBudget = 0;
   const budgetPercentage = (usedBudget / totalBudget) * 100;
 
   useEffect(() => {
@@ -51,12 +51,12 @@ export default function PCBuilderLayout({
   }, [pathname]);
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-80px)]">
+    <div className="relative min-h-[calc(100vh-80px)]">
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 lg:p-10">
-        <div className="h-full flex flex-col lg:flex-row lg:gap-6">
+      <div className="p-4 lg:p-10">
+        <div className="relative flex flex-col lg:flex-row lg:gap-6">
           {/* Left Section */}
-          <div className="w-full lg:w-4/5 h-full flex flex-col">
+          <div className="w-full lg:w-4/5">
             {/* Top Section with Gif and Text */}
             <div className="flex items-center gap-4 p-3 lg:p-4 rounded-lg mb-4 lg:mb-6">
               <div className="w-12 h-12 lg:w-16 lg:h-16 relative flex-shrink-0">
@@ -81,25 +81,27 @@ export default function PCBuilderLayout({
             </div>
 
             {/* Component Selection Area */}
-            <div className="flex-1 bg-secondary/10 rounded-lg p-4 lg:p-6">
+            <div className="bg-secondary/10 rounded-lg p-4 lg:p-6">
               {children}
             </div>
           </div>
 
-          {/* Desktop Right Section */}
-          <div className="hidden lg:block lg:w-1/5 h-full">
-            <Card className="h-full">
-              <CardHeader className="space-y-4">
-                <BudgetSection
-                  usedBudget={usedBudget}
-                  totalBudget={totalBudget}
-                  budgetPercentage={budgetPercentage}
-                />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <PartsList parts={dummyParts} usedBudget={usedBudget} />
-              </CardContent>
-            </Card>
+          {/* Desktop Right Section - Fixed Position */}
+          <div className="hidden lg:block lg:w-1/5">
+            <div className="fixed right-10 w-[calc(20%-2.5rem)] h-[calc(100vh-120px)]">
+              <Card className="h-full">
+                <CardHeader className="space-y-4">
+                  <BudgetSection
+                    usedBudget={usedBudget}
+                    totalBudget={totalBudget}
+                    budgetPercentage={budgetPercentage}
+                  />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <PartsList parts={dummyParts} usedBudget={usedBudget} />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
@@ -175,8 +177,6 @@ function PartsList({ parts, usedBudget }) {
                 />
               </div>
               <div className="flex-1 w-0">
-                {" "}
-                {/* Added w-0 to force text truncation */}
                 <p className="text-xs text-muted-foreground truncate w-full">
                   {part.category}
                 </p>
