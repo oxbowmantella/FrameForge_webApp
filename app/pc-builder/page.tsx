@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -7,51 +7,83 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
+import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
+
+interface PCType {
+  title: string;
+  image: string;
+  priceRange: string;
+  badges: string[];
+  maxPrice: number;
+  minPrice: number;
+}
+
+const pcTypes: PCType[] = [
+  {
+    title: "Entry-Level Build",
+    image: "1-pc.webp",
+    priceRange: "500-1000",
+    badges: [
+      "1080p Gaming",
+      "Office Work",
+      "Light Content Creation",
+      "Web Browsing",
+    ],
+    maxPrice: 1000,
+    minPrice: 500,
+  },
+  {
+    title: "Mid-Range Build",
+    image: "2-pc.webp",
+    priceRange: "1000-2000",
+    badges: [
+      "1440p Gaming",
+      "Content Creation",
+      "Multitasking",
+      "Light Streaming",
+    ],
+    maxPrice: 2000,
+    minPrice: 1000,
+  },
+  {
+    title: "High-End Build",
+    image: "3-pc.webp",
+    priceRange: "2000-4000",
+    badges: ["4K Gaming", "Heavy Streaming", "Video Editing", "3D Rendering"],
+    maxPrice: 4000,
+    minPrice: 2000,
+  },
+];
 
 const PCShowcase = () => {
   const router = useRouter();
+  const { setBudget, setSelectedType } = usePCBuilderStore();
   const [selectedPrice, setSelectedPrice] = useState(800);
-  const [selectedType, setSelectedType] = useState(null);
 
-  const pcTypes = [
-    {
-      title: "Entry-Level Build",
-      image: "1-pc.webp",
-      priceRange: "500-1000",
-      badges: [
-        "1080p Gaming",
-        "Office Work",
-        "Light Content Creation",
-        "Web Browsing",
-      ],
-      maxPrice: 1000,
-      minPrice: 500,
-    },
-    {
-      title: "Mid-Range Build",
-      image: "2-pc.webp",
-      priceRange: "1000-2000",
-      badges: [
-        "1440p Gaming",
-        "Content Creation",
-        "Multitasking",
-        "Light Streaming",
-      ],
-      maxPrice: 2000,
-      minPrice: 1000,
-    },
-    {
-      title: "High-End Build",
-      image: "3-pc.webp",
-      priceRange: "2000-4000",
-      badges: ["4K Gaming", "Heavy Streaming", "Video Editing", "3D Rendering"],
-      maxPrice: 4000,
-      minPrice: 2000,
-    },
-  ];
+  // Get PC type based on price
+  const getTypeFromPrice = (price: number): PCType => {
+    if (price <= 1000) return pcTypes[0]; // Entry-Level
+    if (price <= 2000) return pcTypes[1]; // Mid-Range
+    return pcTypes[2]; // High-End
+  };
 
-  const handleCardClick = (type) => {
-    setSelectedType(type);
+  // Initialize on mount
+  useEffect(() => {
+    setBudget(800);
+    setSelectedType(getTypeFromPrice(800).title);
+  }, []);
+
+  // Handle slider changes
+  const handleSliderChange = (value: number[]) => {
+    const newPrice = value[0];
+    setSelectedPrice(newPrice);
+    setBudget(newPrice);
+    setSelectedType(getTypeFromPrice(newPrice).title);
+  };
+
+  // Handle card clicks
+  const handleCardClick = (type: PCType) => {
+    // Animate the price change
     const duration = 500;
     const steps = 20;
     const startPrice = selectedPrice;
@@ -61,26 +93,31 @@ const PCShowcase = () => {
     let step = 0;
     const interval = setInterval(() => {
       step++;
-      setSelectedPrice((prevPrice) => {
-        const newPrice = startPrice + increment * step;
-        return step === steps ? endPrice : Math.round(newPrice);
-      });
+      const newPrice =
+        step === steps ? endPrice : Math.round(startPrice + increment * step);
+
+      setSelectedPrice(newPrice);
+      setBudget(newPrice);
+      setSelectedType(getTypeFromPrice(newPrice).title);
 
       if (step === steps) clearInterval(interval);
     }, duration / steps);
   };
 
+  // In PCShowcase component
   const handleNext = () => {
-    if (!selectedType) {
-      alert("Please select a build type and set your budget first");
-      return;
-    }
-    router.push("pc-builder/motherboard");
+    // Ensure final values are set in storage
+    console.log("Handle Next clicked");
+    setBudget(selectedPrice);
+    setSelectedType(currentType.title);
+    router.push("/pc-builder/motherboard");
   };
+
+  const currentType = getTypeFromPrice(selectedPrice);
 
   return (
     <div className="bg-background">
-      {/* Sticky Header with Navigation */}
+      {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -89,7 +126,7 @@ const PCShowcase = () => {
                 Budget and Requirement
               </h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                Select your preferred build type and budget
+                Select your budget or click a build type
               </p>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
@@ -104,7 +141,7 @@ const PCShowcase = () => {
               <Button
                 variant="default"
                 size="default"
-                onClick={handleNext}
+                onClick={() => handleNext()}
                 className="flex-1 sm:flex-none gap-2"
               >
                 Next <ArrowRight className="w-4 h-4" />
@@ -137,7 +174,7 @@ const PCShowcase = () => {
                 >
                   <Slider
                     value={[selectedPrice]}
-                    onValueChange={(value) => setSelectedPrice(value[0])}
+                    onValueChange={handleSliderChange}
                     min={500}
                     max={4000}
                     step={100}
@@ -148,15 +185,13 @@ const PCShowcase = () => {
               <div className="w-full sm:w-1/2 text-left sm:text-right">
                 <AnimatePresence mode="wait">
                   <motion.p
-                    key={selectedType?.title}
+                    key={currentType.title}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="text-lg sm:text-xl font-medium"
                   >
-                    {selectedType
-                      ? `Selected: ${selectedType.title}`
-                      : "Select a build type"}
+                    Build Type: {currentType.title}
                   </motion.p>
                 </AnimatePresence>
               </div>
@@ -180,10 +215,13 @@ const PCShowcase = () => {
                     transition: { duration: 0.2, ease: "easeOut" },
                   }}
                   onClick={() => handleCardClick(type)}
+                  className="cursor-pointer"
                 >
                   <Card
-                    className={`relative h-[350px] cursor-pointer overflow-hidden transition-all ${
-                      selectedType === type ? "ring-2 ring-primary" : ""
+                    className={`relative h-[350px] overflow-hidden transition-all ${
+                      currentType.title === type.title
+                        ? "ring-2 ring-primary"
+                        : ""
                     }`}
                   >
                     <motion.div
@@ -236,8 +274,8 @@ const PCShowcase = () => {
           </div>
 
           {/* Features Section */}
-          <Card className="lg:col-span-4">
-            <CardContent className="p-6">
+          <Card className="lg:col-span-4 border-none">
+            <CardContent className="p-6 ">
               <h3 className="text-2xl font-bold mb-4">AI-Powered Building</h3>
               <motion.div
                 className="space-y-4"

@@ -84,7 +84,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation Menu */}
-          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 z-50">
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 z-100">
             <NavigationMenu>
               <NavigationMenuList className="gap-8">
                 <NavigationMenuItem>

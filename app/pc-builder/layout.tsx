@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -6,34 +7,128 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
+import { PCPart } from "@/types/pc-builder";
 
-const dummyParts = [
-  {
-    category: "Memory",
-    name: "CORSAIR VENGEANCE RGB PRO 32 GB",
-    price: "140$",
-    image: "/mascot.gif",
-  },
-  {
-    category: "CPU",
-    name: "INTEL CORE i5-11500H 3.5 GHZ",
-    price: "590$",
-    image: "/mascot.gif",
-  },
-  {
-    category: "Motherboard",
-    name: "ASUS ROG STRIX Z590-E GAMING WIFI",
-    price: "130$",
-    image: "/mascot.gif",
-  },
-  {
-    category: "Case",
-    name: "COOLER MASTER COSMOS C700M",
-    price: "545$",
-    image: "/mascot.gif",
-  },
-];
+// Helper function to format price
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+};
 
+// Types for our components
+interface BudgetSectionProps {
+  usedBudget: number;
+  totalBudget: number;
+  budgetPercentage: number;
+}
+
+interface Part {
+  category: string;
+  name: string;
+  price: string;
+  image: string;
+}
+
+interface PartsListProps {
+  parts: Part[];
+  usedBudget: number;
+  totalBudget: number;
+}
+
+// Budget Section Component
+function BudgetSection({
+  usedBudget,
+  totalBudget,
+  budgetPercentage,
+}: BudgetSectionProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">Budget</span>
+        <span className="text-sm font-medium">
+          {formatPrice(usedBudget)} / {formatPrice(totalBudget)}
+        </span>
+      </div>
+      <Progress
+        value={budgetPercentage}
+        className="h-2"
+        // Add color variants based on percentage
+        variant={budgetPercentage > 100 ? "destructive" : "default"}
+      />
+      <p className="text-xs text-muted-foreground">
+        {formatPrice(totalBudget - usedBudget)} remaining
+      </p>
+    </div>
+  );
+}
+
+// Parts List Component
+function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
+  return (
+    <>
+      <ScrollArea className="h-[calc(50vh-100px)] lg:h-[calc(100vh-300px)]">
+        <div className="space-y-4">
+          {parts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+              <p className="text-muted-foreground text-sm mb-2">
+                Your parts list is empty
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Start selecting components to build your PC
+              </p>
+            </div>
+          ) : (
+            parts.map((part, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-3 p-3 bg-secondary/10 rounded-lg hover:bg-secondary/20 transition-colors duration-200 w-full"
+              >
+                <div className="relative w-12 h-12 flex-shrink-0">
+                  <Image
+                    src={part.image}
+                    alt={part.name}
+                    fill
+                    className="object-contain rounded-md"
+                    sizes="(max-width: 48px) 100vw, 48px"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">
+                    {part.category}
+                  </p>
+                  <p className="text-sm font-medium truncate" title={part.name}>
+                    {part.name}
+                  </p>
+                  <p className="text-sm font-bold text-primary truncate">
+                    {part.price}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
+      <div className="border-t pt-4 mt-4">
+        <div className="flex justify-between items-center">
+          <span className="font-medium">Total</span>
+          <span className="font-bold text-lg">{formatPrice(usedBudget)}</span>
+        </div>
+        {usedBudget > 0 && (
+          <p className="text-xs text-muted-foreground text-right mt-1">
+            {Math.round((usedBudget / totalBudget) * 100)}% of budget used
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Main Layout Component
 export default function PCBuilderLayout({
   children,
 }: {
@@ -42,13 +137,59 @@ export default function PCBuilderLayout({
   const pathname = usePathname();
   const [gifKey, setGifKey] = useState(0);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const totalBudget = 0;
-  const usedBudget = 0;
-  const budgetPercentage = (usedBudget / totalBudget) * 100;
+  const [isHydrated, setIsHydrated] = useState(false);
 
+  // Subscribe to specific store values instead of the whole store
+  const budget = usePCBuilderStore((state) => state.budget);
+  const selectedType = usePCBuilderStore((state) => state.selectedType);
+  const components = usePCBuilderStore((state) => state.components);
+  const totalSpent = usePCBuilderStore((state) => state.totalSpent);
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  // Update GIF key on route change
   useEffect(() => {
     setGifKey((prev) => prev + 1);
   }, [pathname]);
+
+  // Calculate budget percentage
+  const budgetPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
+
+  // Convert components object to array for display
+  const selectedParts = Object.entries(components)
+    .filter(([_, component]) => component !== null)
+    .map(([type, component]) => ({
+      category:
+        type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, " $1"),
+      name: (component as PCPart).name,
+      price: formatPrice((component as PCPart).price),
+      image: "/mascot.gif", // You might want to update this with actual component images
+    }));
+
+  // Get description text based on state
+  const getDescriptionText = () => {
+    if (!budget) {
+      return "Start by selecting a PC category to begin building your dream PC.";
+    }
+
+    if (selectedType) {
+      return `Building ${selectedType} - Budget: ${formatPrice(budget)}`;
+    }
+
+    return `Budget set to ${formatPrice(budget)}`;
+  };
+
+  // Don't render until hydrated to prevent hydration mismatch
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-80px)]">
@@ -58,15 +199,16 @@ export default function PCBuilderLayout({
           {/* Left Section */}
           <div className="w-full lg:w-4/5">
             {/* Top Section with Gif and Text */}
-            <div className="flex items-center gap-4 p-3 lg:p-4 rounded-lg mb-4 lg:mb-6">
+            <div className="flex items-center gap-4 p-3 lg:p-4 rounded-lg mb-4 lg:mb-6 bg-secondary/5">
               <div className="w-12 h-12 lg:w-16 lg:h-16 relative flex-shrink-0">
                 <Image
                   key={gifKey}
                   src="/mascot.gif"
-                  alt="Mascot"
+                  alt="PC Builder Mascot"
                   fill
                   className="object-contain"
                   priority
+                  sizes="(max-width: 768px) 48px, 64px"
                 />
               </div>
               <div className="flex-1">
@@ -74,8 +216,7 @@ export default function PCBuilderLayout({
                   Build Your Dream PC
                 </h2>
                 <p className="text-sm lg:text-base text-muted-foreground">
-                  Start by selecting a PC category to begin building your dream
-                  PC.
+                  {getDescriptionText()}
                 </p>
               </div>
             </div>
@@ -92,13 +233,17 @@ export default function PCBuilderLayout({
               <Card className="h-full">
                 <CardHeader className="space-y-4">
                   <BudgetSection
-                    usedBudget={usedBudget}
-                    totalBudget={totalBudget}
+                    usedBudget={totalSpent}
+                    totalBudget={budget}
                     budgetPercentage={budgetPercentage}
                   />
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <PartsList parts={dummyParts} usedBudget={usedBudget} />
+                <CardContent>
+                  <PartsList
+                    parts={selectedParts}
+                    usedBudget={totalSpent}
+                    totalBudget={budget}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -107,13 +252,14 @@ export default function PCBuilderLayout({
       </div>
 
       {/* Mobile Bottom Panel */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background">
-        {/* Panel Toggle Button */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t">
         <button
           onClick={() => setIsPanelOpen(!isPanelOpen)}
           className="w-full p-2 flex items-center justify-between bg-primary text-primary-foreground"
         >
-          <span className="font-medium">Parts List (${usedBudget})</span>
+          <span className="font-medium">
+            Parts List ({formatPrice(totalSpent)})
+          </span>
           {isPanelOpen ? (
             <ChevronDown className="h-5 w-5" />
           ) : (
@@ -121,7 +267,6 @@ export default function PCBuilderLayout({
           )}
         </button>
 
-        {/* Expandable Panel Content */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out
             ${isPanelOpen ? "max-h-[70vh]" : "max-h-0"}`}
@@ -129,77 +274,21 @@ export default function PCBuilderLayout({
           <Card className="rounded-none border-x-0">
             <CardHeader className="space-y-4">
               <BudgetSection
-                usedBudget={usedBudget}
-                totalBudget={totalBudget}
+                usedBudget={totalSpent}
+                totalBudget={budget}
                 budgetPercentage={budgetPercentage}
               />
             </CardHeader>
-            <CardContent className="space-y-4">
-              <PartsList parts={dummyParts} usedBudget={usedBudget} />
+            <CardContent>
+              <PartsList
+                parts={selectedParts}
+                usedBudget={totalSpent}
+                totalBudget={budget}
+              />
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
-  );
-}
-
-function BudgetSection({ usedBudget, totalBudget, budgetPercentage }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium">Budget</span>
-        <span className="text-sm font-medium">
-          ${usedBudget} / ${totalBudget}
-        </span>
-      </div>
-      <Progress value={budgetPercentage} className="h-2" />
-    </div>
-  );
-}
-
-function PartsList({ parts, usedBudget }) {
-  return (
-    <>
-      <ScrollArea className="h-[calc(50vh-100px)] lg:h-[calc(100vh-300px)]">
-        <div className="space-y-4">
-          {parts.map((part, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-3 p-3 bg-secondary/10 rounded-lg hover:bg-zinc-100 w-full"
-            >
-              <div className="relative w-12 h-12 flex-shrink-0">
-                <Image
-                  src={part.image}
-                  alt={part.name}
-                  fill
-                  className="object-contain rounded-md"
-                />
-              </div>
-              <div className="flex-1 w-0">
-                <p className="text-xs text-muted-foreground truncate w-full">
-                  {part.category}
-                </p>
-                <p
-                  className="text-sm font-medium truncate w-full"
-                  title={part.name}
-                >
-                  {part.name}
-                </p>
-                <p className="text-sm font-bold text-primary truncate w-full">
-                  {part.price}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-      <div>
-        <div className="flex justify-between items-center">
-          <span className="font-medium">Total</span>
-          <span className="font-bold text-lg">${usedBudget}</span>
-        </div>
-      </div>
-    </>
   );
 }
