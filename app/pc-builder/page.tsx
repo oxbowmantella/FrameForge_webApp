@@ -21,7 +21,7 @@ interface PCType {
 const pcTypes: PCType[] = [
   {
     title: "Entry-Level Build",
-    image: "1-pc.webp",
+    image: "/1-pc.webp",
     priceRange: "500-1000",
     badges: [
       "1080p Gaming",
@@ -34,7 +34,7 @@ const pcTypes: PCType[] = [
   },
   {
     title: "Mid-Range Build",
-    image: "2-pc.webp",
+    image: "/2-pc.webp",
     priceRange: "1000-2000",
     badges: [
       "1440p Gaming",
@@ -47,7 +47,7 @@ const pcTypes: PCType[] = [
   },
   {
     title: "High-End Build",
-    image: "3-pc.webp",
+    image: "/3-pc.webp",
     priceRange: "2000-4000",
     badges: ["4K Gaming", "Heavy Streaming", "Video Editing", "3D Rendering"],
     maxPrice: 4000,
