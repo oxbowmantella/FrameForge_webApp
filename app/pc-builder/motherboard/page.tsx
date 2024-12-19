@@ -88,7 +88,7 @@ const FeatureBadge = ({
 
 export default function MotherboardListing() {
   const router = useRouter();
-  const { budget, setMotherboard } = usePCBuilderStore();
+  const { budget, setComponent, components } = usePCBuilderStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
   const [motherboards, setMotherboards] = useState<Motherboard[]>([]);
@@ -143,6 +143,12 @@ export default function MotherboardListing() {
     }
   }, [budget]);
 
+  useEffect(() => {
+    if (components.motherboard) {
+      setSelectedBoard(components.motherboard.id);
+    }
+  }, [components.motherboard]);
+
   const handleSearch = () => {
     setCurrentPage(1);
     fetchMotherboards(1);
@@ -151,10 +157,25 @@ export default function MotherboardListing() {
   const handleAddReplace = (board: Motherboard) => {
     if (selectedBoard === board.id) {
       setSelectedBoard(null);
-      setMotherboard(null);
+      setComponent("motherboard", null);
     } else {
       setSelectedBoard(board.id);
-      setMotherboard(board);
+      // Convert the motherboard to PCPart format
+      setComponent("motherboard", {
+        id: board.id,
+        name: board.name,
+        price: board.price,
+        image: processImageUrl(board.image),
+        type: "motherboard",
+        specifications: {
+          socket: board.socket,
+          formFactor: board.formFactor,
+          chipset: board.chipset,
+          manufacturer: board.manufacturer,
+          memoryType: board.memoryType,
+          memoryMax: board.memoryMax,
+        },
+      });
     }
   };
 

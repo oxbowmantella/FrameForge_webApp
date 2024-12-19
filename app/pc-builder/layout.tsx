@@ -108,7 +108,7 @@ function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
           )}
         </div>
       </ScrollArea>
-      <div className="border-t pt-4 mt-4">
+      {/* <div className="border-t pt-4 mt-4">
         <div className="flex justify-between items-center">
           <span className="font-medium">Total</span>
           <span className="font-bold text-lg">{formatPrice(usedBudget)}</span>
@@ -118,7 +118,7 @@ function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
             {Math.round((usedBudget / totalBudget) * 100)}% of budget used
           </p>
         )}
-      </div>
+      </div> */}
     </>
   );
 }
@@ -225,7 +225,7 @@ export default function PCBuilderLayout({
           {/* Desktop Right Section - Fixed Position */}
           <div className="hidden lg:block lg:w-1/5">
             <div className="fixed right-10 w-[calc(20%-2.5rem)] h-[calc(100vh-120px)]">
-              <Card className="h-full">
+              <Card className="h-auto">
                 <CardHeader className="space-y-4">
                   <BudgetSection
                     usedBudget={totalSpent}
