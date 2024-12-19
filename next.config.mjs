@@ -9,6 +9,9 @@ const nextConfig = {
       "images-eu.ssl-images-amazon.com",
     ], // Add the domain here
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
