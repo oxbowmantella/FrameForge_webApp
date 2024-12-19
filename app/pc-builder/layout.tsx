@@ -83,13 +83,13 @@ function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
                 key={index}
                 className="flex items-start gap-3 p-3 bg-secondary/10 rounded-lg hover:bg-secondary/20 transition-colors duration-200 w-full"
               >
-                <div className="relative w-12 h-12 flex-shrink-0">
+                <div className="relative w-16 h-16 flex-shrink-0">
                   <Image
                     src={part.image}
                     alt={part.name}
                     fill
-                    className="object-contain rounded-md"
-                    sizes="(max-width: 48px) 100vw, 48px"
+                    className="object-contain"
+                    sizes="(max-width: 64px) 100vw, 64px"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -152,6 +152,7 @@ export default function PCBuilderLayout({
 
   // Calculate budget percentage
   const budgetPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
+  console.log(Object.entries(components));
 
   // Convert components object to array for display
   const selectedParts = Object.entries(components)
@@ -161,7 +162,7 @@ export default function PCBuilderLayout({
         type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, " $1"),
       name: (component as PCPart).name,
       price: formatPrice((component as PCPart).price),
-      image: "/mascot.gif", // You might want to update this with actual component images
+      image: (component as PCPart).image,
     }));
 
   // Get description text based on state
