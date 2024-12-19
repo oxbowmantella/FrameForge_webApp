@@ -1,4 +1,4 @@
-// /app/pc-builder/memory/page.tsx
+// /app/pc-builder/storage/page.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
@@ -10,10 +10,10 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  MemoryStick,
+  HardDrive,
   Zap,
-  Gauge,
-  Thermometer,
+  Database,
+  Cable,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -33,26 +33,27 @@ interface SearchCriteria {
     min: number;
     max: number;
   };
-  memoryType: string;
-  maxMemory: string;
-  recommendedSpeeds: string[];
+  supportedInterfaces: {
+    m2: boolean;
+    sata: boolean;
+  };
+  recommendedTypes: string[];
   features: string[];
 }
 
-interface MemoryModule {
+interface StorageDevice {
   id: string;
   name: string;
   image: string;
   manufacturer: string;
   price: number;
-  speed: string;
-  modules: string;
+  capacity: string;
   pricePerGB: string;
-  timing: string;
-  latency: string;
-  voltage: string;
-  heatSpreader: boolean;
+  type: string;
+  cache: string;
   formFactor: string;
+  interface: string;
+  isNVMe: boolean;
   score: number;
   isRecommended: boolean;
   reasons?: string[];
@@ -83,12 +84,12 @@ const FeatureBadge = ({
   </TooltipProvider>
 );
 
-export default function MemoryListing() {
+export default function StorageListing() {
   const router = useRouter();
   const { budget, setComponent, components } = usePCBuilderStore();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
-  const [memoryModules, setMemoryModules] = useState<MemoryModule[]>([]);
+  const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
+  const [storageDevices, setStorageDevices] = useState<StorageDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,11 +98,11 @@ export default function MemoryListing() {
     null
   );
 
-  const fetchMemory = async (page: number) => {
+  const fetchStorage = async (page: number) => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/ai/memory", {
+      const response = await fetch("/api/ai/storage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,7 +111,6 @@ export default function MemoryListing() {
           itemsPerPage: ITEMS_PER_PAGE,
           searchTerm: searchTerm.trim(),
           motherboard: components.motherboard,
-          cpu: components.cpu,
         }),
       });
 
@@ -122,13 +122,13 @@ export default function MemoryListing() {
 
       if (data.error) throw new Error(data.error);
 
-      setMemoryModules(data.memory || []);
+      setStorageDevices(data.storage || []);
       setTotalPages(Math.ceil((data.totalCount || 0) / ITEMS_PER_PAGE));
       setSearchCriteria(data.searchCriteria);
     } catch (error) {
-      console.error("Error fetching memory:", error);
-      setError("Failed to load memory modules. Please try again.");
-      setMemoryModules([]);
+      console.error("Error fetching storage:", error);
+      setError("Failed to load storage devices. Please try again.");
+      setStorageDevices([]);
     } finally {
       setLoading(false);
     }
@@ -137,81 +137,78 @@ export default function MemoryListing() {
   useEffect(() => {
     if (budget && components.motherboard) {
       setCurrentPage(1);
-      fetchMemory(1);
+      fetchStorage(1);
     }
   }, [budget, components.motherboard]);
 
   useEffect(() => {
-    if (components.memory) {
-      setSelectedMemory(components.memory.id);
+    if (components.storage) {
+      setSelectedStorage(components.storage.id);
     }
-  }, [components.memory]);
+  }, [components.storage]);
 
   const handleSearch = () => {
     setCurrentPage(1);
-    fetchMemory(1);
+    fetchStorage(1);
   };
 
-  const handleAddReplace = (memory: MemoryModule) => {
-    if (selectedMemory === memory.id) {
-      setSelectedMemory(null);
-      setComponent("memory", null);
+  const handleAddReplace = (storage: StorageDevice) => {
+    if (selectedStorage === storage.id) {
+      setSelectedStorage(null);
+      setComponent("storage", null);
     } else {
-      setSelectedMemory(memory.id);
-      setComponent("memory", {
-        id: memory.id,
-        name: memory.name,
-        price: memory.price,
-        image: processImageUrl(memory.image),
-        type: "memory",
+      setSelectedStorage(storage.id);
+      setComponent("storage", {
+        id: storage.id,
+        name: storage.name,
+        price: storage.price,
+        image: processImageUrl(storage.image),
+        type: "storage",
         specifications: {
-          speed: memory.speed,
-          modules: memory.modules,
-          timing: memory.timing,
-          voltage: memory.voltage,
+          capacity: storage.capacity,
+          type: storage.type,
+          formFactor: storage.formFactor,
+          interface: storage.interface,
+          isNVMe: storage.isNVMe,
         },
       });
     }
   };
 
-  const renderFeatures = (memory: MemoryModule) => {
+  const renderFeatures = (storage: StorageDevice) => {
     const features = [];
 
-    if (memory.speed) {
+    if (storage.type) {
       features.push(
         <FeatureBadge
-          key="speed"
-          icon={Zap}
-          text={memory.speed}
+          key="type"
+          icon={storage.type === "SSD" ? Zap : HardDrive}
+          text={storage.type}
           variant="default"
         />
       );
     }
 
-    if (memory.modules) {
+    if (storage.capacity) {
       features.push(
-        <FeatureBadge key="modules" icon={MemoryStick} text={memory.modules} />
+        <FeatureBadge key="capacity" icon={Database} text={storage.capacity} />
       );
     }
 
-    if (memory.timing) {
+    if (storage.interface) {
       features.push(
         <FeatureBadge
-          key="timing"
-          icon={Gauge}
-          text={`Timing: ${memory.timing}`}
-        />
-      );
-    }
-
-    if (memory.heatSpreader) {
-      features.push(
-        <FeatureBadge
-          key="cooling"
-          icon={Thermometer}
-          text="Heat Spreader"
+          key="interface"
+          icon={Cable}
+          text={storage.interface}
           variant="secondary"
         />
+      );
+    }
+
+    if (storage.isNVMe) {
+      features.push(
+        <FeatureBadge key="nvme" icon={Zap} text="NVMe" variant="secondary" />
       );
     }
 
@@ -231,7 +228,7 @@ export default function MemoryListing() {
     }
   };
 
-  const nextRoute = "/pc-builder/storage";
+  const nextRoute = "/pc-builder/case";
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
@@ -239,11 +236,9 @@ export default function MemoryListing() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold">
-                Select Memory (RAM)
-              </h1>
+              <h1 className="text-3xl sm:text-4xl font-bold">Select Storage</h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                AI-recommended memory for your ${budget} build
+                AI-recommended storage for your ${budget} build
                 {components.motherboard &&
                   ` - Compatible with ${components.motherboard.name}`}
               </p>
@@ -260,9 +255,9 @@ export default function MemoryListing() {
               <Button
                 variant="default"
                 size="default"
-                onClick={() => selectedMemory && router.push(nextRoute)}
+                onClick={() => selectedStorage && router.push(nextRoute)}
                 className="flex-1 sm:flex-none gap-2"
-                disabled={!selectedMemory}
+                disabled={!selectedStorage}
               >
                 Next <ArrowRight className="w-4 h-4" />
               </Button>
@@ -276,7 +271,7 @@ export default function MemoryListing() {
         <div className="flex gap-4 mb-8">
           <Input
             type="text"
-            placeholder="Search memory modules..."
+            placeholder="Search storage devices..."
             className="flex-grow text-lg p-6"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -295,13 +290,11 @@ export default function MemoryListing() {
                 Budget: ${searchCriteria.priceRange.min.toFixed(0)} - $
                 {searchCriteria.priceRange.max.toFixed(0)}
               </Badge>
-              <Badge variant="secondary">
-                Memory Type: {searchCriteria.memoryType}
-              </Badge>
-              {searchCriteria.maxMemory !== "Any" && (
-                <Badge variant="secondary">
-                  Max Capacity: {searchCriteria.maxMemory}
-                </Badge>
+              {searchCriteria.supportedInterfaces.m2 && (
+                <Badge variant="secondary">M.2 Compatible</Badge>
+              )}
+              {searchCriteria.supportedInterfaces.sata && (
+                <Badge variant="secondary">SATA Compatible</Badge>
               )}
             </div>
           </Card>
@@ -320,26 +313,26 @@ export default function MemoryListing() {
         )}
 
         {/* No Results */}
-        {!loading && !error && memoryModules.length === 0 && (
+        {!loading && !error && storageDevices.length === 0 && (
           <Card className="p-6 text-center">
             <p className="text-muted-foreground">
-              No memory modules found matching your criteria. Try adjusting your
-              search or budget.
+              No storage devices found matching your criteria. Try adjusting
+              your search or budget.
             </p>
           </Card>
         )}
 
-        {/* Memory Module Listings */}
-        {!loading && !error && memoryModules.length > 0 && (
+        {/* Storage Device Listings */}
+        {!loading && !error && storageDevices.length > 0 && (
           <div className="space-y-6">
-            {memoryModules.map((memory) => (
+            {storageDevices.map((storage) => (
               <div
-                key={memory.id}
+                key={storage.id}
                 className={`
                 relative group
                 transition-all duration-300 ease-in-out
                 ${
-                  selectedMemory === memory.id
+                  selectedStorage === storage.id
                     ? "ring-2 ring-primary shadow-lg"
                     : "hover:shadow-md"
                 }
@@ -347,14 +340,14 @@ export default function MemoryListing() {
               >
                 <Card
                   className="p-6 cursor-pointer"
-                  onClick={() => handleAddReplace(memory)}
+                  onClick={() => handleAddReplace(storage)}
                 >
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Image Section */}
                     <div className="w-full lg:w-48 h-48 flex-shrink-0 bg-secondary/10 rounded-lg overflow-hidden">
                       <Image
-                        src={processImageUrl(memory.image)}
-                        alt={memory.name}
+                        src={processImageUrl(storage.image)}
+                        alt={storage.name}
                         width={200}
                         height={200}
                         className="object-contain w-full h-full"
@@ -365,33 +358,33 @@ export default function MemoryListing() {
                     <div className="flex-grow">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <h3 className="text-2xl font-bold">{memory.name}</h3>
+                          <h3 className="text-2xl font-bold">{storage.name}</h3>
                           <p className="text-muted-foreground mt-1">
-                            {memory.manufacturer} | {memory.modules}
+                            {storage.manufacturer} | {storage.capacity}
                           </p>
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold">
-                            ${memory.price.toFixed(2)}
+                            ${storage.price.toFixed(2)}
                           </div>
-                          {memory.pricePerGB && (
+                          {storage.pricePerGB && (
                             <div className="text-sm text-muted-foreground">
-                              ${memory.pricePerGB}/GB
+                              ${storage.pricePerGB}/GB
                             </div>
                           )}
                           <Button
                             variant={
-                              selectedMemory === memory.id
+                              selectedStorage === storage.id
                                 ? "default"
                                 : "outline"
                             }
                             className="mt-2 gap-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAddReplace(memory);
+                              handleAddReplace(storage);
                             }}
                           >
-                            {selectedMemory === memory.id ? (
+                            {selectedStorage === storage.id ? (
                               <>
                                 <Check className="h-4 w-4" /> Selected
                               </>
@@ -406,29 +399,27 @@ export default function MemoryListing() {
 
                       {/* Features */}
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {renderFeatures(memory)}
+                        {renderFeatures(storage)}
                       </div>
 
                       {/* Additional Info */}
                       <div className="mt-4 text-sm text-muted-foreground">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {memory.voltage && (
-                            <span>Voltage: {memory.voltage}</span>
+                          {storage.formFactor && (
+                            <span>Form Factor: {storage.formFactor}</span>
                           )}
-                          {memory.latency && (
-                            <span>CAS Latency: {memory.latency}</span>
-                          )}
+                          {storage.cache && <span>Cache: {storage.cache}</span>}
                         </div>
                       </div>
 
                       {/* AI Recommendations */}
-                      {memory.isRecommended && (
+                      {storage.isRecommended && (
                         <div className="mt-4 p-3 bg-secondary/10 rounded-lg">
                           <Badge variant="secondary" className="mb-2">
                             AI Recommended
                           </Badge>
                           <ul className="text-sm space-y-1">
-                            {memory.reasons?.map((reason, idx) => (
+                            {storage.reasons?.map((reason, idx) => (
                               <li key={idx} className="text-muted-foreground">
                                 • {reason}
                               </li>
@@ -453,7 +444,7 @@ export default function MemoryListing() {
               onClick={() => {
                 const newPage = currentPage - 1;
                 setCurrentPage(newPage);
-                fetchMemory(newPage);
+                fetchStorage(newPage);
               }}
             >
               Previous
@@ -467,7 +458,7 @@ export default function MemoryListing() {
               onClick={() => {
                 const newPage = currentPage + 1;
                 setCurrentPage(newPage);
-                fetchMemory(newPage);
+                fetchStorage(newPage);
               }}
             >
               Next
