@@ -1,5 +1,5 @@
+// /app/pc-builder/layout.tsx
 "use client";
-
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -54,12 +54,7 @@ function BudgetSection({
           {formatPrice(usedBudget)} / {formatPrice(totalBudget)}
         </span>
       </div>
-      <Progress
-        value={budgetPercentage}
-        className="h-2"
-        // Add color variants based on percentage
-        variant={budgetPercentage > 100 ? "destructive" : "default"}
-      />
+      <Progress value={budgetPercentage} className="h-2" />
       <p className="text-xs text-muted-foreground">
         {formatPrice(totalBudget - usedBudget)} remaining
       </p>
