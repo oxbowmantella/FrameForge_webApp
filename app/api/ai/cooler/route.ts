@@ -130,7 +130,6 @@ export async function POST(req: Request) {
 
         // Check height compatibility
         const height = parseInt(parsedContent.Height) || 0;
-        if (height > coolingReq.maxHeight) {
           return null;
         }
 

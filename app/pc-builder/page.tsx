@@ -108,10 +108,9 @@ const PCShowcase = () => {
   // In PCShowcase component
   const handleNext = () => {
     // Ensure final values are set in storage
-    console.log("Handle Next clicked");
     setBudget(selectedPrice);
     setSelectedType(currentType.title);
-    router.push("/pc-builder/motherboard");
+    router.push("/pc-builder/cpu-select");
   };
 
   const currentType = getTypeFromPrice(selectedPrice);
