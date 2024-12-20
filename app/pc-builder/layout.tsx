@@ -195,7 +195,7 @@ export default function PCBuilderLayout({
           {/* Left Section */}
           <div className="w-full lg:w-4/5">
             {/* Top Section with Gif and Text */}
-            <div className="flex items-center gap-4 p-3 lg:p-4 rounded-lg mb-4 lg:mb-6 bg-secondary/5">
+            {/* <div className="flex items-center gap-4 p-3 lg:p-4 rounded-lg mb-4 lg:mb-6 bg-secondary/5">
               <div className="w-12 h-12 lg:w-16 lg:h-16 relative flex-shrink-0">
                 <Image
                   key={gifKey}
@@ -215,7 +215,7 @@ export default function PCBuilderLayout({
                   {getDescriptionText()}
                 </p>
               </div>
-            </div>
+            </div> */}
 
             {/* Component Selection Area */}
             <div className="bg-secondary/10 rounded-lg p-4 lg:p-6">
