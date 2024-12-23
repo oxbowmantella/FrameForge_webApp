@@ -33,7 +33,8 @@ const defaultState: ExtendedPCBuildState = {
     motherboard: null,
     powerSupply: null,
     storage: null,
-    cooler: undefined
+    cooler: null,
+    psu: null
   },
   preferences: {
     cpuBrand: null,
@@ -80,6 +81,8 @@ export const usePCBuilderStore = create(
       },
 
       setComponent: (componentType, component) => {
+        console.log("Current State : ", component);
+        
         logStateChange('Set Component', { 
           type: componentType, 
           component,

@@ -231,7 +231,7 @@ export default function MemoryListing() {
     }
   };
 
-  const nextRoute = "/pc-builder/storage";
+  const nextRoute = "/pc-builder/psu";
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}

@@ -1,4 +1,3 @@
-// /app/api/ai/memory/route.ts
 import { NextResponse } from "next/server";
 import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -9,28 +8,96 @@ const debugLog = (step: string, data: any) => {
   console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
 };
 
-// Helper function to parse the pageContent string into an object
-const parsePageContent = (content: string) => {
-  const lines = content.split('\n');
-  const result: { [key: string]: string } = {};
-  
-  lines.forEach(line => {
-    const [key, ...valueParts] = line.split(':');
-    if (key && valueParts.length) {
-      result[key.trim()] = valueParts.join(':').trim();
+const parseMemoryData = (content: string) => {
+  try {
+    const lines = content.split('\n');
+    const data: Record<string, string> = {};
+    
+    lines.forEach(line => {
+      const [key, ...values] = line.split(':');
+      if (key && values.length) {
+        data[key.trim()] = values.join(':').trim();
+      }
+    });
+
+    debugLog('Parsed Memory Data', data);
+    return data;
+  } catch (error) {
+    console.error('Error parsing memory data:', error);
+    return {};
+  }
+};
+
+// Helper to check memory compatibility based on motherboard/CPU specs
+const isMemoryCompatible = (memoryData: Record<string, string>, motherboard: any) => {
+  if (!motherboard) return true; // If no motherboard specified, don't filter
+
+  // Check if it's desktop memory (DIMM)
+  const formFactor = memoryData['Form Factor']?.toLowerCase() || '';
+  if (!formFactor.includes('dimm') || formFactor.includes('sodimm')) {
+    debugLog('Filtered out - Wrong form factor', formFactor);
+    return false;
+  }
+
+  // Dynamic memory type compatibility check
+  if (motherboard.specifications?.memoryType) {
+    const supportedType = motherboard.specifications.memoryType.toLowerCase();
+    const memoryType = memoryData['Speed']?.toLowerCase() || '';
+    
+    // Extract DDR generation (e.g., "ddr4", "ddr5")
+    const supportedDDR = supportedType.match(/(ddr\d)/i)?.[1]?.toLowerCase();
+    const memoryDDR = memoryType.match(/(ddr\d)/i)?.[1]?.toLowerCase();
+    
+    if (supportedDDR && memoryDDR && supportedDDR !== memoryDDR) {
+      debugLog('Filtered out - Incompatible DDR generation', {
+        supported: supportedDDR,
+        memory: memoryDDR
+      });
+      return false;
     }
-  });
+  }
+
+  return true;
+};
+
+const calculatePerformanceScore = (memory: any, motherboard: any) => {
+  let score = 60; // Base score
   
-  debugLog('Parsed Content', result);
-  return result;
+  // Speed scoring based on motherboard's supported speeds
+  const speedMatch = memory.speed?.match(/DDR[45]-(\d+)/) || [];
+  const speed = parseInt(speedMatch[1] || '0');
+  if (speed > 0) {
+    // Get supported memory speeds from motherboard if available
+    const supportedSpeeds = motherboard?.specifications?.memorySpeeds || [];
+    if (supportedSpeeds.length > 0) {
+      const maxSupported = Math.max(...supportedSpeeds.map((s: string) => 
+        parseInt(s.match(/\d+/)?.[0] || '0')));
+      score += Math.min(20, (speed / maxSupported) * 20);
+    } else {
+      // Fallback scoring if no supported speeds specified
+      score += Math.min(20, (speed / 3200) * 20);
+    }
+  }
+  
+  // Capacity scoring
+  const modulesMatch = memory.modules?.match(/(\d+)\s*x\s*(\d+)/);
+  if (modulesMatch) {
+    const totalGB = parseInt(modulesMatch[1]) * parseInt(modulesMatch[2]);
+    score += Math.min(10, (totalGB / 32) * 10);
+  }
+  
+  // Features scoring
+  if (memory.heatSpreader) score += 5;
+  if (memory.timing) score += 5;
+  
+  return Math.min(100, Math.max(0, score));
 };
 
 export async function POST(req: Request) {
   try {
     const { budget, page = 1, itemsPerPage = 10, searchTerm = "", motherboard, cpu } = await req.json();
-    debugLog('Request Parameters', { budget, page, itemsPerPage, searchTerm, motherboard, cpu });
+    debugLog('Request Parameters', { budget, motherboard, cpu, page, itemsPerPage });
 
-    // Initialize our AI and vector store
     const embeddings = new OpenAIEmbeddings();
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!
@@ -38,130 +105,107 @@ export async function POST(req: Request) {
 
     const index = pinecone.Index("pc-parts");
     const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-      pineconeIndex: index
+      pineconeIndex: index,
     });
 
-    // Get memory type constraints from motherboard
-    const memoryType = motherboard?.specifications?.memoryType || "";
-    const maxMemory = motherboard?.specifications?.memoryMax || "";
-    
-    // Calculate budget allocation (typically 5-10% of total budget for memory)
-    const minBudget = budget * 0.05;
-    const maxBudget = budget * 0.10;
-
-    // Create search string with compatibility requirements
+    // Construct search string based on motherboard specs
     const searchString = `
-      memory components with these characteristics:
-      price range $${minBudget} to $${maxBudget}
-      ${memoryType ? `memory type: ${memoryType}` : 'modern memory modules'}
-      ${maxMemory ? `within maximum supported memory: ${maxMemory}` : ''}
-      performance focused
-      reliable brands
-      good price to performance ratio
+      desktop memory RAM modules DIMM
+      ${motherboard?.specifications?.memoryType ? 
+        `${motherboard.specifications.memoryType} compatible memory` : 
+        'memory modules'}
+      NOT SODIMM
+      NOT laptop memory
       ${searchTerm}
     `.trim();
 
     debugLog('Search String', searchString);
 
-    // Perform the search
-    const searchResults = await vectorStore.similaritySearch(searchString, 20);
-    debugLog('Search Results Count', searchResults.length);
+    const searchResults = await vectorStore.similaritySearch(searchString, 100);
+    debugLog('Initial Results Count', searchResults.length);
 
-    // Process and parse the results
-    const memoryModules = searchResults
-      .map((result, index) => {
-        const parsedContent = parsePageContent(result.pageContent);
-        debugLog(`Parsed Memory ${index}`, parsedContent);
+    const processedMemory = searchResults
+      .map(result => {
+        const data = parseMemoryData(result.pageContent);
+        if (!data.Name) return null;
 
-        // Only process if we have valid data
-        if (!parsedContent.Name || !parsedContent.Price) {
-          console.log('Skipping invalid memory data:', parsedContent);
+        // Check compatibility first
+        if (!isMemoryCompatible(data, motherboard)) {
           return null;
         }
 
-        const price = parseFloat(parsedContent.Price.replace('$', ''));
-        if (isNaN(price) || price === 0) {
+        // Parse price
+        let price = 0;
+        try {
+          price = parseFloat(data.Price?.replace(/[^0-9.]/g, '') || '0');
+        } catch (e) {
           return null;
         }
 
-        // Check compatibility with motherboard
-        if (memoryType && parsedContent['Memory Type'] && 
-            !parsedContent['Memory Type'].includes(memoryType)) {
+        // Skip only if price is 0 or invalid
+        if (price === 0) {
           return null;
         }
+
+        const memory = {
+          id: `mem-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: data.Name,
+          manufacturer: data.Manufacturer || 'Unknown',
+          price,
+          image: data['Image URL'] || '',
+          speed: data.Speed || 'Unknown',
+          modules: data.Modules || 'Unknown',
+          pricePerGB: data['Price / GB'] || 'N/A',
+          timing: data.Timing || 'Unknown',
+          latency: data['CAS Latency'] || 'Unknown',
+          voltage: data.Voltage || 'Unknown',
+          heatSpreader: data['Heat Spreader']?.toLowerCase() === 'yes',
+          formFactor: data['Form Factor'] || 'DIMM'
+        };
+
+        const score = calculatePerformanceScore(memory, motherboard);
 
         return {
-          id: `mem-${index}`,
-          name: parsedContent.Name,
-          image: parsedContent['Image URL'],
-          manufacturer: parsedContent.Manufacturer || 'Unknown',
-          price: price,
-          speed: parsedContent.Speed || 'Unknown',
-          modules: parsedContent.Modules || 'Unknown',
-          pricePerGB: parsedContent['Price / GB'] || 'Unknown',
-          timing: parsedContent.Timing || 'Unknown',
-          latency: parsedContent['CAS Latency'] || 'Unknown',
-          voltage: parsedContent.Voltage || 'Unknown',
-          heatSpreader: parsedContent['Heat Spreader'] === 'Yes',
-          formFactor: parsedContent['Form Factor'] || 'Unknown',
-          score: 0.8 - (index * 0.05),
-          isRecommended: index < 5,
+          ...memory,
+          score,
+          isRecommended: score >= 70,
           reasons: [
             `Compatible with ${motherboard?.name || 'your system'}`,
-            parsedContent.Speed ? `Fast ${parsedContent.Speed} speed` : null,
-            parsedContent['CAS Latency'] ? `Good latency at CL${parsedContent['CAS Latency']}` : null,
-            parsedContent['Heat Spreader'] === 'Yes' ? 'Includes heat spreader for better cooling' : null
+            `${memory.speed} speed${memory.timing ? ` with ${memory.timing} timing` : ''}`,
+            memory.modules ? `${memory.modules} configuration` : null,
+            memory.heatSpreader ? 'Includes heat spreader for better cooling' : null,
+            memory.pricePerGB !== 'N/A' ? `Value: ${memory.pricePerGB}/GB` : null
           ].filter(Boolean)
         };
       })
       .filter((mem): mem is NonNullable<typeof mem> => mem !== null)
-      .sort((a, b) => a.price - b.price);
+      .sort((a, b) => b.score - a.score);
 
-    debugLog('Processed Memory Modules Sample', memoryModules.slice(0, 2));
-
-    // Handle no results case
-    if (memoryModules.length === 0) {
-      return new NextResponse(JSON.stringify({
-        error: 'No compatible memory modules found',
-        details: 'Try adjusting your search terms or budget range',
-      }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Paginate results
-    const startIndex = (page - 1) * itemsPerPage;
-    const paginatedMemory = memoryModules.slice(startIndex, startIndex + itemsPerPage);
+    debugLog('Processed Memory Count', processedMemory.length);
 
     const response = {
-      memory: paginatedMemory,
-      totalCount: memoryModules.length,
+      memory: processedMemory.slice((page - 1) * itemsPerPage, page * itemsPerPage),
+      totalCount: processedMemory.length,
       page,
       itemsPerPage,
-      searchTerm,
-      budget,
       searchCriteria: {
         priceRange: {
-          min: minBudget,
-          max: maxBudget
+          min: 0, // No minimum budget restriction
+          max: budget // Use full budget as maximum
         },
-        memoryType: memoryType || 'Any',
-        maxMemory: maxMemory || 'Any',
-        recommendedSpeeds: ['DDR4-3200', 'DDR4-3600', 'DDR5-4800', 'DDR5-5600'],
+        memoryType: motherboard?.specifications?.memoryType || 'Any',
+        maxMemory: motherboard?.specifications?.memoryMax || 'Any',
+        recommendedSpeeds: motherboard?.specifications?.memorySpeeds || [],
         features: ['Heat Spreader', 'XMP Support', 'Low Latency']
       }
     };
 
-    debugLog('Final Response Stats', {
-      totalResults: response.totalCount,
-      currentPage: response.page,
-      resultsInPage: response.memory.length
-    });
-
     return new NextResponse(JSON.stringify(response), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, max-age=0'
+      },
     });
 
   } catch (error) {

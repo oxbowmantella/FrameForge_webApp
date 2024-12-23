@@ -1,4 +1,3 @@
-// /app/pc-builder/psu/page.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
@@ -10,60 +9,43 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  AlertTriangle,
   Zap,
-  Battery,
-  Cable,
   Power,
+  Cable,
   Gauge,
+  Plug,
+  Battery,
+  Star,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { FeatureBadge } from "@/components/ui/feature-badge";
 
 const ITEMS_PER_PAGE = 10;
 
-interface PSUConnectors {
-  eps: string;
-  pcie8pin: string;
-  pcie6pin: string;
-  sata: string;
-  molex: string;
+interface PowerBreakdown {
+  basePower: number;
+  cpuPower: number;
+  gpuPower: number;
+  memoryPower: number;
+  storagePower: number;
+  fansPower: number;
+  overhead: number;
 }
 
 interface SystemRequirements {
-  requiredWattage: number;
-  requiredConnectors: {
-    eps: boolean;
+  powerBreakdown: PowerBreakdown;
+  totalRequired: number;
+  recommended: number;
+  connectors: {
+    eps8pin: number;
     pcie8pin: number;
     pcie6pin: number;
     sata: number;
     molex: number;
   };
-  recommendedWattage: number;
-}
-
-interface SearchCriteria {
-  priceRange: {
-    min: number;
-    max: number;
-  };
-  minimumWattage: number;
-  requiredConnectors: {
-    eps: boolean;
-    pcie8pin: number;
-    pcie6pin: number;
-    sata: number;
-    molex: number;
-  };
-  features: string[];
 }
 
 interface PowerSupply {
@@ -76,58 +58,25 @@ interface PowerSupply {
   efficiency: string;
   modular: string;
   length: string;
-  connectors: PSUConnectors;
+  formFactor: string;
+  connectors: {
+    eps8pin: number;
+    pcie8pin: number;
+    pcie6pin: number;
+    sata: number;
+    molex: number;
+  };
   score: number;
   isRecommended: boolean;
-  compatibility: {
-    wattageOk: boolean;
-    connectorsOk: boolean;
+  reasons: string[];
+  powerRequirements: {
+    system: number;
+    recommended: number;
+    provided: number;
+    headroom: number;
+    breakdown: PowerBreakdown;
   };
-  reasons?: string[];
 }
-
-// Helper function to format features as badges
-const FeatureBadge = ({
-  icon: Icon,
-  text,
-  variant = "outline",
-}: {
-  icon?: React.ComponentType<any>;
-  text: string;
-  variant?: "outline" | "default" | "secondary" | "destructive";
-}) => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger>
-        <Badge variant={variant} className="flex items-center gap-1 px-3 py-1">
-          {Icon && <Icon className="h-3 w-3" />}
-          <span>{text}</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{text}</p>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-);
-
-// Helper function for power supply tier rating
-const getPSUTier = (efficiency: string, wattage: number): string => {
-  const tierMap: { [key: string]: string } = {
-    "80+ Titanium": "S",
-    "80+ Platinum": "A",
-    "80+ Gold": "B",
-    "80+ Silver": "C",
-    "80+ Bronze": "D",
-  };
-
-  // Bonus tier for high wattage units
-  const tier = tierMap[efficiency] || "E";
-  if (wattage >= 1000 && tier !== "S") {
-    return String.fromCharCode(tier.charCodeAt(0) - 1);
-  }
-  return tier;
-};
 
 export default function PSUListing() {
   const router = useRouter();
@@ -139,9 +88,6 @@ export default function PSUListing() {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [searchCriteria, setSearchCriteria] = useState<SearchCriteria | null>(
-    null
-  );
   const [systemRequirements, setSystemRequirements] =
     useState<SystemRequirements | null>(null);
 
@@ -166,13 +112,15 @@ export default function PSUListing() {
       }
 
       const data = await response.json();
-
       if (data.error) throw new Error(data.error);
 
       setPowerSupplies(data.powerSupplies || []);
       setTotalPages(Math.ceil((data.totalCount || 0) / ITEMS_PER_PAGE));
-      setSearchCriteria(data.searchCriteria);
-      setSystemRequirements(data.systemRequirements);
+
+      // Make sure systemRequirements exists before setting
+      if (data.systemRequirements) {
+        setSystemRequirements(data.systemRequirements);
+      }
     } catch (error) {
       console.error("Error fetching power supplies:", error);
       setError("Failed to load power supplies. Please try again.");
@@ -183,11 +131,11 @@ export default function PSUListing() {
   };
 
   useEffect(() => {
-    if (budget && components.gpu) {
+    if (budget && components.cpu && components.gpu) {
       setCurrentPage(1);
       fetchPowerSupplies(1);
     }
-  }, [budget, components.gpu]);
+  }, [budget, components.cpu, components.gpu]);
 
   useEffect(() => {
     if (components.psu) {
@@ -200,7 +148,7 @@ export default function PSUListing() {
     fetchPowerSupplies(1);
   };
 
-  const handleAddReplace = (psu: PowerSupply) => {
+  const handleSelectPSU = (psu: PowerSupply) => {
     if (selectedPsu === psu.id) {
       setSelectedPsu(null);
       setComponent("psu", null);
@@ -223,10 +171,8 @@ export default function PSUListing() {
   };
 
   const processImageUrl = (url: string) => {
-    if (url.startsWith("//")) {
-      return `https:${url}`;
-    }
-    return url;
+    if (!url) return "";
+    return url.startsWith("//") ? `https:${url}` : url;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -237,9 +183,14 @@ export default function PSUListing() {
 
   // Check for missing required components
   const missingComponents = [];
-  if (!components.motherboard) missingComponents.push("motherboard");
   if (!components.cpu) missingComponents.push("CPU");
-  if (!components.gpu) missingComponents.push("GPU");
+  if (
+    !components.gpu &&
+    components.cpu?.specifications &&
+    !("integratedGraphics" in components.cpu.specifications)
+  ) {
+    missingComponents.push("GPU");
+  }
 
   if (missingComponents.length > 0) {
     return (
@@ -262,6 +213,7 @@ export default function PSUListing() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
@@ -273,9 +225,9 @@ export default function PSUListing() {
                 Select Power Supply
               </h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                AI-recommended PSUs for your ${budget} build
-                {systemRequirements &&
-                  ` - Minimum ${systemRequirements.requiredWattage}W required`}
+                {systemRequirements
+                  ? `System needs ${systemRequirements.totalRequired}W minimum, recommending ${systemRequirements.recommended}W for optimal performance`
+                  : "Calculating power requirements..."}
               </p>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
@@ -290,7 +242,9 @@ export default function PSUListing() {
               <Button
                 variant="default"
                 size="default"
-                onClick={() => selectedPsu && router.push("/pc-builder/cooler")}
+                onClick={() =>
+                  selectedPsu && router.push("/pc-builder/storage")
+                }
                 className="flex-1 sm:flex-none gap-2"
                 disabled={!selectedPsu}
               >
@@ -317,42 +271,64 @@ export default function PSUListing() {
           </Button>
         </div>
 
-        {/* System Requirements Card */}
-        {systemRequirements && (
-          <Card className="p-4 mb-6 bg-secondary/10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {components.cpu && ( // Only show if we have a CPU selected
+          <Card className="p-4 mb-8 bg-secondary/10">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
               <div>
-                <h3 className="text-sm font-medium mb-2">Required Power</h3>
-                <Badge variant="default" className="text-nowrap">
-                  Min: {systemRequirements.requiredWattage}W
-                </Badge>
-                <Badge variant="outline" className="ml-2 text-nowrap">
-                  Recommended: {systemRequirements.recommendedWattage}W
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">GPU Power</h3>
-                <Badge variant="secondary" className="text-nowrap">
-                  {components.gpu?.specifications?.powerConnectors ||
-                    "Standard PCIe"}
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">CPU Power</h3>
-                <Badge variant="secondary" className="text-nowrap">
-                  {systemRequirements.requiredConnectors.eps
-                    ? "8-pin EPS Required"
-                    : "4-pin CPU"}
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">
-                  Recommended Features
-                </h3>
+                <h3 className="font-medium mb-2">Power Requirements</h3>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">Modular</Badge>
-                  <Badge variant="outline">80+ Gold</Badge>
+                  {systemRequirements ? (
+                    <>
+                      <FeatureBadge
+                        icon={Power}
+                        text={`${systemRequirements.totalRequired}W Required`}
+                        variant="default"
+                      />
+                      <FeatureBadge
+                        icon={Battery}
+                        text={`${systemRequirements.recommended}W Recommended`}
+                        variant="outline"
+                      />
+                    </>
+                  ) : (
+                    <FeatureBadge
+                      icon={Power}
+                      text="Calculating requirements..."
+                      variant="outline"
+                    />
+                  )}
                 </div>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2">CPU & GPU Power</h3>
+                <div className="flex flex-wrap gap-2">
+                  {systemRequirements ? (
+                    <>
+                      <FeatureBadge
+                        icon={Plug}
+                        text={`CPU: ${systemRequirements.powerBreakdown.cpuPower}W`}
+                      />
+                      <FeatureBadge
+                        icon={Plug}
+                        text={`GPU: ${systemRequirements.powerBreakdown.gpuPower}W`}
+                      />
+                    </>
+                  ) : (
+                    <FeatureBadge
+                      icon={Plug}
+                      text="Loading power data..."
+                      variant="outline"
+                    />
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2">Efficiency Recommendation</h3>
+                <FeatureBadge
+                  icon={Zap}
+                  text="80+ Gold or better recommended"
+                  variant="secondary"
+                />
               </div>
             </div>
           </Card>
@@ -370,16 +346,6 @@ export default function PSUListing() {
           </div>
         )}
 
-        {/* No Results */}
-        {!loading && !error && powerSupplies.length === 0 && (
-          <Card className="p-6 text-center">
-            <p className="text-muted-foreground">
-              No compatible power supplies found. Try adjusting your search
-              criteria or budget.
-            </p>
-          </Card>
-        )}
-
         {/* PSU Listings */}
         {!loading && !error && powerSupplies.length > 0 && (
           <div className="space-y-6">
@@ -387,18 +353,18 @@ export default function PSUListing() {
               <div
                 key={psu.id}
                 className={`
-                relative group
-                transition-all duration-300 ease-in-out
-                ${
-                  selectedPsu === psu.id
-                    ? "ring-2 ring-primary shadow-lg"
-                    : "hover:shadow-md"
-                }
-              `}
+                  relative group
+                  transition-all duration-300 ease-in-out
+                  ${
+                    selectedPsu === psu.id
+                      ? "ring-2 ring-primary shadow-lg"
+                      : "hover:shadow-md"
+                  }
+                `}
               >
                 <Card
                   className="p-6 cursor-pointer"
-                  onClick={() => handleAddReplace(psu)}
+                  onClick={() => handleSelectPSU(psu)}
                 >
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Image Section */}
@@ -414,10 +380,17 @@ export default function PSUListing() {
 
                     {/* Content Section */}
                     <div className="flex-grow">
-                      {/* Header with Title and Price */}
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <h3 className="text-2xl font-bold">{psu.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-2xl font-bold">{psu.name}</h3>
+                            {psu.isRecommended && (
+                              <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20">
+                                <Star className="w-3 h-3 mr-1" />
+                                Recommended
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-muted-foreground mt-1">
                             {psu.manufacturer} | {psu.wattage}W |{" "}
                             {psu.efficiency}
@@ -434,7 +407,7 @@ export default function PSUListing() {
                             className="mt-2 gap-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAddReplace(psu);
+                              handleSelectPSU(psu);
                             }}
                           >
                             {selectedPsu === psu.id ? (
@@ -450,113 +423,97 @@ export default function PSUListing() {
                         </div>
                       </div>
 
-                      {/* Key Specifications */}
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            Power Rating
-                          </Badge>
-                          <p className="text-sm">
-                            {psu.wattage}W | {psu.efficiency}
-                          </p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            Form Factor
-                          </Badge>
-                          <p className="text-sm">
-                            {psu.modular} | {psu.length}mm
-                          </p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            CPU Power
-                          </Badge>
-                          <p className="text-sm">{psu.connectors.eps} EPS</p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            GPU Power
-                          </Badge>
-                          <p className="text-sm">
-                            {psu.connectors.pcie8pin} x 8-pin
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Compatibility Status */}
+                      {/* Features */}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <FeatureBadge
-                          icon={
-                            psu.compatibility.wattageOk ? Check : AlertTriangle
-                          }
-                          text={`Wattage: ${
-                            psu.compatibility.wattageOk
-                              ? "Sufficient"
-                              : "Insufficient"
-                          }`}
-                          variant={
-                            psu.compatibility.wattageOk
-                              ? "outline"
-                              : "destructive"
-                          }
+                          icon={Power}
+                          text={`${psu.wattage}W`}
+                          variant="default"
                         />
                         <FeatureBadge
-                          icon={
-                            psu.compatibility.connectorsOk
-                              ? Check
-                              : AlertTriangle
-                          }
-                          text={`Connectors: ${
-                            psu.compatibility.connectorsOk
-                              ? "Compatible"
-                              : "Missing Required"
-                          }`}
-                          variant={
-                            psu.compatibility.connectorsOk
-                              ? "outline"
-                              : "destructive"
-                          }
+                          icon={Zap}
+                          text={psu.efficiency}
+                          variant="secondary"
+                        />
+                        <FeatureBadge
+                          icon={Cable}
+                          text={psu.modular}
+                          variant="outline"
                         />
                         <FeatureBadge
                           icon={Gauge}
-                          text={`Tier ${getPSUTier(
-                            psu.efficiency,
-                            psu.wattage
-                          )}`}
-                          variant="secondary"
+                          text={`${Math.round(
+                            (psu.powerRequirements.headroom /
+                              psu.powerRequirements.system) *
+                              100
+                          )}% Headroom`}
+                          variant={
+                            psu.powerRequirements.headroom > 100
+                              ? "default"
+                              : "outline"
+                          }
                         />
                       </div>
 
                       {/* Connectors */}
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <FeatureBadge
-                          icon={Cable}
-                          text={`${psu.connectors.sata} SATA`}
-                          variant="secondary"
-                        />
-                        <FeatureBadge
-                          icon={Cable}
-                          text={`${psu.connectors.molex} Molex`}
-                          variant="secondary"
-                        />
+                        {psu.connectors.eps8pin > 0 && (
+                          <FeatureBadge
+                            icon={Cable}
+                            text={`${psu.connectors.eps8pin}x EPS`}
+                            variant="secondary"
+                          />
+                        )}
+                        {psu.connectors.pcie8pin > 0 && (
+                          <FeatureBadge
+                            icon={Cable}
+                            text={`${psu.connectors.pcie8pin}x PCIe 8-pin`}
+                            variant="secondary"
+                          />
+                        )}
+                        {psu.connectors.pcie6pin > 0 && (
+                          <FeatureBadge
+                            icon={Cable}
+                            text={`${psu.connectors.pcie6pin}x PCIe 6-pin`}
+                            variant="secondary"
+                          />
+                        )}
+                      </div>
+
+                      {/* Additional Specs */}
+                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">
+                            Form Factor:
+                          </span>
+                          <p className="font-medium">{psu.formFactor}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Length:</span>
+                          <p className="font-medium">{psu.length}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            SATA Ports:
+                          </span>
+                          <p className="font-medium">{psu.connectors.sata}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Molex:</span>
+                          <p className="font-medium">{psu.connectors.molex}</p>
+                        </div>
                       </div>
 
                       {/* AI Recommendations */}
-                      {psu.isRecommended && (
-                        <div className="mt-4 p-3 bg-secondary/10 rounded-lg">
-                          <Badge variant="secondary" className="mb-2">
-                            AI Recommended
-                          </Badge>
-                          <ul className="text-sm space-y-1">
-                            {psu.reasons?.map((reason, idx) => (
-                              <li key={idx} className="text-muted-foreground">
-                                • {reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                      <div className="mt-4 p-3 bg-secondary/10 rounded-lg">
+                        <ul className="text-sm space-y-1">
+                          {psu.reasons?.map((reason, idx) => (
+                            <li key={idx} className="text-muted-foreground">
+                              • {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -595,6 +552,9 @@ export default function PSUListing() {
             </Button>
           </div>
         )}
+
+        {/* Bottom Padding for Mobile Navigation */}
+        <div className="h-24 lg:h-0" />
       </div>
     </div>
   );

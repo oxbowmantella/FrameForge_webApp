@@ -66,8 +66,8 @@ function BudgetSection({
 function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
   return (
     <>
-      <ScrollArea className="h-[calc(50vh-100px)] lg:h-[calc(100vh-300px)]">
-        <div className="space-y-4">
+      <ScrollArea className="h-[calc(50vh-100px)] lg:h-[calc(100vh-300px)] overflow-auto no-scrollbar scrollbar-hide">
+        <div className="space-y-4 scrollbar-hide no-scrollbar">
           {parts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8 text-center">
               <p className="text-muted-foreground text-sm mb-2">
@@ -81,9 +81,9 @@ function PartsList({ parts, usedBudget, totalBudget }: PartsListProps) {
             parts.map((part, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-secondary/10 rounded-lg hover:bg-secondary/20 transition-colors duration-200 w-full"
+                className="flex items-start gap-3 p-3 bg-secondary/10 rounded-lg hover:bg-secondary/20 transition-colors  no-scrollbar scrollbar-hide duration-200 w-full"
               >
-                <div className="relative w-16 h-16 flex-shrink-0">
+                <div className="relative w-16 h-16 flex-shrink-0  no-scrollbar scrollbar-hide">
                   <Image
                     src={part.image}
                     alt={part.name}
@@ -139,6 +139,7 @@ export default function PCBuilderLayout({
   const selectedType = usePCBuilderStore((state) => state.selectedType);
   const components = usePCBuilderStore((state) => state.components);
   const totalSpent = usePCBuilderStore((state) => state.totalSpent);
+  const clearBuild = usePCBuilderStore((state) => state.clearBuild);
 
   // Handle hydration
   useEffect(() => {
@@ -153,6 +154,10 @@ export default function PCBuilderLayout({
   useEffect(() => {
     setGifKey((prev) => prev + 1);
   }, [pathname]);
+
+  useEffect(() => {
+    clearBuild();
+  }, []);
 
   // Calculate budget percentage
   const budgetPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;

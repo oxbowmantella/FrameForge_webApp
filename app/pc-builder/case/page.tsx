@@ -1,4 +1,3 @@
-// /app/pc-builder/case/page.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
@@ -10,12 +9,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  AlertTriangle,
-  Ruler,
   Usb,
   Fan,
   HardDrive,
-  Gauge,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -30,24 +26,7 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 
-interface CaseDimensions {
-  length: number;
-  width: number;
-  height: number;
-}
-
-interface DriveBays {
-  internal35: string;
-  internal25: string;
-}
-
-interface CaseCompatibility {
-  motherboardOk: boolean;
-  gpuClearanceOk: boolean;
-  driveSpaceOk: boolean;
-  airflowRating: string;
-}
-
+// Simplified interfaces to match our API
 interface Case {
   id: string;
   name: string;
@@ -55,43 +34,14 @@ interface Case {
   manufacturer: string;
   price: number;
   type: string;
-  color: string;
-  dimensions: CaseDimensions;
   maxGpuLength: number;
   formFactors: string[];
-  driveBays: DriveBays;
   frontPorts: string;
   hasUSBC: boolean;
-  score: number;
-  isRecommended: boolean;
-  compatibility: CaseCompatibility;
   reasons?: string[];
 }
 
-interface Requirements {
-  motherboardFormFactor?: string;
-  minimumClearances?: {
-    gpu?: number;
-    cpuCooler?: number;
-  };
-  airflowRequirement?: string;
-}
-
-interface SearchCriteria {
-  priceRange: {
-    min: number;
-    max: number;
-  };
-  motherboardFormFactor: string;
-  minimumClearances: {
-    gpu: number;
-    cpuCooler: number;
-  };
-  airflowRequirement: string;
-  features: string[];
-}
-
-// Helper function to format features as badges
+// Helper function for feature badges
 const FeatureBadge = ({
   icon: Icon,
   text,
@@ -99,7 +49,7 @@ const FeatureBadge = ({
 }: {
   icon?: React.ComponentType<any>;
   text: string;
-  variant?: "outline" | "default" | "secondary" | "destructive";
+  variant?: "outline" | "default" | "secondary";
 }) => (
   <TooltipProvider>
     <Tooltip>
@@ -116,20 +66,6 @@ const FeatureBadge = ({
   </TooltipProvider>
 );
 
-// Helper function to format dimensions
-const formatDimensions = (dimensions: CaseDimensions): string => {
-  return `${dimensions.length} × ${dimensions.width} × ${dimensions.height}mm`;
-};
-
-// Helper function to calculate case size rating
-const getCaseSizeRating = (dimensions: CaseDimensions): string => {
-  const volume = dimensions.length * dimensions.width * dimensions.height;
-  if (volume < 30000) return "SFF";
-  if (volume < 45000) return "Compact";
-  if (volume < 60000) return "Mid-Size";
-  return "Full-Size";
-};
-
 export default function CaseListing() {
   const router = useRouter();
   const { budget, setComponent, components } = usePCBuilderStore();
@@ -140,10 +76,6 @@ export default function CaseListing() {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [searchCriteria, setSearchCriteria] = useState<SearchCriteria | null>(
-    null
-  );
-  const [requirements, setRequirements] = useState<Requirements | null>(null);
 
   const fetchCases = async (page: number) => {
     setLoading(true);
@@ -166,13 +98,10 @@ export default function CaseListing() {
       }
 
       const data = await response.json();
-
       if (data.error) throw new Error(data.error);
 
       setCases(data.cases || []);
       setTotalPages(Math.ceil((data.totalCount || 0) / ITEMS_PER_PAGE));
-      setSearchCriteria(data.searchCriteria);
-      setRequirements(data.requirements);
     } catch (error) {
       console.error("Error fetching cases:", error);
       setError("Failed to load cases. Please try again.");
@@ -213,10 +142,8 @@ export default function CaseListing() {
         image: processImageUrl(case_.image),
         type: "case",
         specifications: {
-          dimensions: case_.dimensions,
           maxGpuLength: case_.maxGpuLength,
           formFactors: case_.formFactors,
-          driveBays: case_.driveBays,
           frontPorts: case_.frontPorts,
           hasUSBC: case_.hasUSBC,
         },
@@ -240,8 +167,6 @@ export default function CaseListing() {
   // Check for missing required components
   const missingComponents = [];
   if (!components.motherboard) missingComponents.push("motherboard");
-  if (!components.cpu) missingComponents.push("CPU");
-  if (!components.memory) missingComponents.push("memory");
   if (!components.storage) missingComponents.push("storage");
 
   if (missingComponents.length > 0) {
@@ -265,6 +190,7 @@ export default function CaseListing() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
@@ -274,9 +200,9 @@ export default function CaseListing() {
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold">Select Case</h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                AI-recommended cases for your ${budget} build
+                Recommended cases for your ${budget} build
                 {components.motherboard &&
-                  ` - Fits ${components.motherboard.specifications.formFactor} motherboard`}
+                  ` - Fits ${components.motherboard.specifications.formFactor}`}
               </p>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
@@ -291,11 +217,11 @@ export default function CaseListing() {
               <Button
                 variant="default"
                 size="default"
-                onClick={() => selectedCase && router.push("/pc-builder/gpu")}
+                onClick={() => selectedCase && router.push("../../overview")}
                 className="flex-1 sm:flex-none gap-2"
                 disabled={!selectedCase}
               >
-                Next <ArrowRight className="w-4 h-4" />
+                finish
               </Button>
             </div>
           </div>
@@ -317,39 +243,6 @@ export default function CaseListing() {
             <Search className="h-6 w-6" />
           </Button>
         </div>
-
-        {/* System Requirements Card */}
-        {requirements && (
-          <Card className="p-4 mb-6 bg-secondary/10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Motherboard</h3>
-                <Badge variant="default" className="text-nowrap">
-                  {requirements.motherboardFormFactor || "ATX"}
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">Required Clearance</h3>
-                <Badge variant="secondary" className="text-nowrap">
-                  GPU: {requirements?.minimumClearances?.gpu ?? 300}mm
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">Cooling</h3>
-                <Badge variant="secondary" className="text-nowrap">
-                  {requirements.airflowRequirement || "Standard"} Airflow Needed
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium mb-2">Price Range</h3>
-                <Badge variant="outline" className="text-nowrap">
-                  ${searchCriteria?.priceRange?.min?.toFixed(0) || 0} - $
-                  {searchCriteria?.priceRange?.max?.toFixed(0) || 0}
-                </Badge>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Error State */}
         {error && (
@@ -379,14 +272,13 @@ export default function CaseListing() {
               <div
                 key={case_.id}
                 className={`
-                relative group
-                transition-all duration-300 ease-in-out
-                ${
-                  selectedCase === case_.id
-                    ? "ring-2 ring-primary shadow-lg"
-                    : "hover:shadow-md"
-                }
-              `}
+                  relative group transition-all duration-300 ease-in-out
+                  ${
+                    selectedCase === case_.id
+                      ? "ring-2 ring-primary shadow-lg"
+                      : "hover:shadow-md"
+                  }
+                `}
               >
                 <Card
                   className="p-6 cursor-pointer"
@@ -406,7 +298,6 @@ export default function CaseListing() {
 
                     {/* Content Section */}
                     <div className="flex-grow">
-                      {/* Header with Title and Price */}
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <h3 className="text-2xl font-bold">{case_.name}</h3>
@@ -441,48 +332,10 @@ export default function CaseListing() {
                         </div>
                       </div>
 
-                      {/* Specifications */}
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            Size
-                          </Badge>
-                          <p className="text-sm">
-                            {formatDimensions(case_.dimensions)}
-                          </p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            GPU Space
-                          </Badge>
-                          <p className="text-sm">
-                            Up to {case_.maxGpuLength}mm
-                          </p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            Storage
-                          </Badge>
-                          <p className="text-sm">
-                            {case_.driveBays.internal35} × 3.5",{" "}
-                            {case_.driveBays.internal25} × 2.5"
-                          </p>
-                        </div>
-                        <div>
-                          <Badge variant="default" className="mb-1">
-                            Form Factors
-                          </Badge>
-                          <p className="text-sm">
-                            {case_.formFactors.join(", ")}
-                          </p>
-                        </div>
-                      </div>
-
                       {/* Features */}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <FeatureBadge
-                          icon={Ruler}
-                          text={`${getCaseSizeRating(case_.dimensions)} Tower`}
+                          text={`Fits GPUs up to ${case_.maxGpuLength}mm`}
                           variant="secondary"
                         />
                         {case_.hasUSBC && (
@@ -492,76 +345,25 @@ export default function CaseListing() {
                             variant="secondary"
                           />
                         )}
-                        <FeatureBadge
-                          icon={Fan}
-                          text={`${case_.compatibility.airflowRating} Airflow`}
-                          variant={
-                            case_.compatibility.airflowRating === "Good"
-                              ? "secondary"
-                              : "outline"
-                          }
-                        />
-                        <FeatureBadge
-                          icon={HardDrive}
-                          text={`${
-                            parseInt(case_.driveBays.internal35) +
-                            parseInt(case_.driveBays.internal25)
-                          } Drive Bays`}
-                          variant="outline"
-                        />
+                        {case_.type.toLowerCase().includes("mesh") && (
+                          <FeatureBadge
+                            icon={Fan}
+                            text="Mesh Front Panel"
+                            variant="secondary"
+                          />
+                        )}
                       </div>
 
-                      {/* Compatibility Status */}
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <FeatureBadge
-                          icon={
-                            case_.compatibility.motherboardOk
-                              ? Check
-                              : AlertTriangle
-                          }
-                          text={`${
-                            case_.compatibility.motherboardOk
-                              ? "Compatible with"
-                              : "Check"
-                          } ${
-                            components.motherboard?.specifications.formFactor
-                          }`}
-                          variant={
-                            case_.compatibility.motherboardOk
-                              ? "outline"
-                              : "destructive"
-                          }
-                        />
-                        <FeatureBadge
-                          icon={
-                            case_.compatibility.gpuClearanceOk
-                              ? Check
-                              : AlertTriangle
-                          }
-                          text="GPU Clearance"
-                          variant={
-                            case_.compatibility.gpuClearanceOk
-                              ? "outline"
-                              : "destructive"
-                          }
-                        />
+                      {/* Compatibility Info and Recommendations */}
+                      <div className="mt-4 p-3 bg-secondary/10 rounded-lg">
+                        <ul className="text-sm space-y-1">
+                          {case_.reasons?.map((reason, idx) => (
+                            <li key={idx} className="text-muted-foreground">
+                              • {reason}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-
-                      {/* AI Recommendations */}
-                      {case_.isRecommended && (
-                        <div className="mt-4 p-3 bg-secondary/10 rounded-lg">
-                          <Badge variant="secondary" className="mb-2">
-                            AI Recommended
-                          </Badge>
-                          <ul className="text-sm space-y-1">
-                            {case_.reasons?.map((reason, idx) => (
-                              <li key={idx} className="text-muted-foreground">
-                                • {reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Card>

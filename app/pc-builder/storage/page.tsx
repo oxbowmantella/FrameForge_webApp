@@ -59,6 +59,14 @@ interface StorageDevice {
   reasons?: string[];
 }
 
+interface MemorySpecifications {
+  capacity: number;
+  type: string;
+  formFactor: string;
+  interface: string;
+  isNVMe: boolean;
+}
+
 // Helper function to format features as badges
 const FeatureBadge = ({
   icon: Icon,
@@ -165,7 +173,7 @@ export default function StorageListing() {
         image: processImageUrl(storage.image),
         type: "storage",
         specifications: {
-          capacity: storage.capacity,
+          capacity: parseFloat(storage.capacity),
           type: storage.type,
           formFactor: storage.formFactor,
           interface: storage.interface,
@@ -285,18 +293,12 @@ export default function StorageListing() {
         {/* Search Criteria Display */}
         {searchCriteria && (
           <Card className="p-4 mb-6 bg-secondary/10">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">
-                Budget: ${searchCriteria.priceRange.min.toFixed(0)} - $
-                {searchCriteria.priceRange.max.toFixed(0)}
-              </Badge>
-              {searchCriteria.supportedInterfaces.m2 && (
-                <Badge variant="secondary">M.2 Compatible</Badge>
-              )}
-              {searchCriteria.supportedInterfaces.sata && (
-                <Badge variant="secondary">SATA Compatible</Badge>
-              )}
-            </div>
+            {searchCriteria.supportedInterfaces.m2 && (
+              <Badge variant="secondary">M.2 Compatible</Badge>
+            )}
+            {searchCriteria.supportedInterfaces.sata && (
+              <Badge variant="secondary">SATA Compatible</Badge>
+            )}
           </Card>
         )}
 

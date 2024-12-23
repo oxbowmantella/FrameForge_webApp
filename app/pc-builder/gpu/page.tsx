@@ -242,7 +242,7 @@ export default function GPUSelection() {
 
   const handleNext = () => {
     if (selectedGpu) {
-      router.push("/pc-builder/psu");
+      router.push("/pc-builder/memory");
     }
   };
 
