@@ -145,6 +145,10 @@ export default function PCBuilderLayout({
     setIsHydrated(true);
   }, []);
 
+  useEffect(() => {
+    usePCBuilderStore.persist.rehydrate();
+  }, []);
+
   // Update GIF key on route change
   useEffect(() => {
     setGifKey((prev) => prev + 1);
@@ -155,14 +159,18 @@ export default function PCBuilderLayout({
 
   // Convert components object to array for display
   const selectedParts = Object.entries(components)
-    .filter(([_, component]) => component !== null)
-    .map(([type, component]) => ({
-      category:
-        type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, " $1"),
-      name: (component as PCPart).name,
-      price: formatPrice((component as PCPart).price),
-      image: (component as PCPart).image,
-    }));
+    .filter(([_, component]) => component !== null && component !== undefined)
+    .map(([type, component]) => {
+      const pcPart = component as PCPart;
+      return {
+        category:
+          type.charAt(0).toUpperCase() +
+          type.slice(1).replace(/([A-Z])/g, " $1"),
+        name: pcPart.name,
+        price: formatPrice(pcPart.price),
+        image: pcPart.image,
+      };
+    });
 
   // Get description text based on state
   const getDescriptionText = () => {

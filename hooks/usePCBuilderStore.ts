@@ -14,7 +14,7 @@ const logStateChange = (action: string, data: any) => {
 interface ExtendedPCBuildState extends PCBuildState {
   preferences: {
     cpuBrand: 'Intel' | 'AMD' | null;
-    gpuBrand: 'NVIDIA' | 'Integrated' | null;
+    gpuBrand: 'NVIDIA' | 'AMD' | 'Integrated' | null;
     hasCPUCooler: boolean;
     hasIntegratedGraphics: boolean;
   };
@@ -32,7 +32,8 @@ const defaultState: ExtendedPCBuildState = {
     memory: null,
     motherboard: null,
     powerSupply: null,
-    storage: null
+    storage: null,
+    cooler: undefined
   },
   preferences: {
     cpuBrand: null,
@@ -58,7 +59,7 @@ export const usePCBuilderStore = create(
     setSelectedType: (type: string) => void;
     setComponent: (componentType: keyof ExtendedPCBuildState['components'], component: PCPart | null) => void;
     setCPUBrand: (brand: 'Intel' | 'AMD' | null) => void;
-    setGPUBrand: (brand: 'NVIDIA' | 'Integrated' | null) => void;
+    setGPUBrand: (brand: "NVIDIA" | "AMD" | "Integrated" | null) => void;
     setHasCPUCooler: (hasCooler: boolean) => void;
     setHasIntegratedGraphics: (hasIntegrated: boolean) => void;
     clearBuild: () => void;

@@ -153,6 +153,7 @@ export interface PCBuildState {
   selectedType: string;
   totalSpent: number;
   components: {
+    cooler: any;
     case: PCPart | null;
     cpuCooler: PCPart | null;
     cpu: PCPart | null;

@@ -1,20 +1,27 @@
+"use client";
 import React, { useState } from "react";
 import { MagicCard } from "@/components/ui/magic-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 
 const GpuBrandSelector = () => {
   const router = useRouter();
   const [selectedBrand, setSelectedBrand] = useState<"amd" | "nvidia" | null>(
     null
   );
+  const { setGPUBrand } = usePCBuilderStore();
 
   const handleSelectBrand = (brand: "amd" | "nvidia", e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("Selecting brand:", brand);
     setSelectedBrand(brand);
+    if (brand === "nvidia") {
+      setGPUBrand("NVIDIA");
+    } else if (brand === "amd") {
+      setGPUBrand("AMD");
+    }
   };
 
   return (
@@ -43,7 +50,11 @@ const GpuBrandSelector = () => {
               <Button
                 variant="default"
                 size="default"
-                onClick={() => router.push("/pc-builder/gpu")}
+                onClick={() => {
+                  if (selectedBrand) {
+                    router.push("/pc-builder/gpu");
+                  }
+                }}
                 className="flex-1 sm:flex-none gap-2"
                 disabled={!selectedBrand}
               >
@@ -64,7 +75,6 @@ const GpuBrandSelector = () => {
               onClick={(e) => handleSelectBrand("amd", e)}
             >
               <MagicCard
-                asChild
                 className={`relative cursor-pointer flex-col items-center justify-center p-0 shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden`}
                 gradientColor={"#FF000040"}
               >
@@ -121,7 +131,6 @@ const GpuBrandSelector = () => {
               onClick={(e) => handleSelectBrand("nvidia", e)}
             >
               <MagicCard
-                asChild
                 className={`relative cursor-pointer flex-col items-center justify-center p-0 shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden`}
                 gradientColor={"#76B900"}
               >
@@ -136,14 +145,17 @@ const GpuBrandSelector = () => {
                   <div className="relative z-10 p-12">
                     <div className="w-full h-32 mb-8 flex items-center justify-center">
                       <svg
-                        viewBox="0 0 124 124"
+                        viewBox="0 0 800 190"
                         className={`w-full h-full transition-colors duration-300 ${
                           selectedBrand === "nvidia"
                             ? "fill-white"
                             : "fill-foreground"
                         }`}
                       >
-                        <path d="M122.1,1.9C122.1,1.9,122.1,1.9,122.1,1.9C122.1,1.9,122.1,1.9,122.1,1.9c0,0-0.1,0-0.1,0c0,0,0,0,0,0 c0,0,0,0,0,0c0,0,0,0,0,0L84.6,7.2c-2.2,0.3-3.9,2.2-3.9,4.5v82.2c0,1.9,1.2,3.4,2.7,4.1c0.5,0.3,1.1,0.4,1.8,0.4 c0.9,0,1.8-0.3,2.6-0.8l33.8-23c1.5-1,2.3-2.6,2.3-4.3V4.5C124,3.1,123.2,2.1,122.1,1.9z M35.4,100.4c0.2,0,0.3,0,0.5,0 c0.8-0.1,1.5-0.4,2.2-0.8c2.3-1.5,3.7-4.2,3.7-7V28.8c0-1.7-1.4-3.1-3.1-3.1l0,0c-1.7,0-3.1,1.4-3.1,3.1v56c0,0,0,0,0,0.1 c0,0.2,0,0.4-0.1,0.5c-0.1,0.3-0.4,0.5-0.7,0.5c-0.2,0-0.4-0.1-0.5-0.2L3.7,58.5c-0.4-0.3-0.6-0.9-0.5-1.4c0.1-0.5,0.5-0.9,1-1 l24.9-6.2c1.4-0.3,2.3-1.7,2-3.1c-0.3-1.4-1.7-2.3-3.1-2l-27,6.7c0,0-0.1,0-0.1,0c0,0-0.1,0-0.1,0c0,0,0,0,0,0 c0,0-0.1,0-0.1,0c0,0-0.1,0-0.1,0.1c0,0,0,0-0.1,0c0,0-0.1,0-0.1,0.1c0,0,0,0-0.1,0c0,0-0.1,0.1-0.1,0.1c0,0,0,0,0,0 c0,0-0.1,0.1-0.1,0.1c0,0,0,0,0,0c0,0-0.1,0.1-0.1,0.1c0,0,0,0,0,0c0,0,0,0.1-0.1,0.1c0,0,0,0,0,0c0,0,0,0.1-0.1,0.1 c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1c0,0,0,0.1,0,0.1l0.6,37.8 c0,1.3,0.7,2.4,1.7,3.1L35.4,100.4z" />
+                        <path
+                          d="M59.66 10.76v-.249h.16c.086 0 .205.007.205.113 0 .115-.06.135-.164.135zm0 .173h.106l.247.433h.272l-.274-.45c.142-.01.258-.077.258-.267 0-.237-.164-.313-.439-.313h-.399v1.03h.23zm1.16-.08c0-.606-.47-.957-.995-.957-.528 0-.999.351-.999.957 0 .605.471.958 1 .958.523 0 .994-.353.994-.958m-.288 0c0 .441-.323.738-.707.738v-.003c-.394.003-.712-.294-.712-.735s.318-.736.712-.736c.384 0 .707.295.707.736M24.307.604l.001 10.868h3.069V.604zM.16.589v10.883h3.097V3.209h2.399c.794 0 1.36.197 1.744.607.485.517.683 1.351.683 2.878v4.778h3.001V5.459c0-4.292-2.736-4.87-5.412-4.87zm29.09.015v10.868h4.978c2.653 0 3.519-.441 4.455-1.43.662-.694 1.089-2.219 1.089-3.883 0-1.528-.362-2.891-.993-3.74C37.642.9 36.003.604 33.558.604zm3.044 2.366h1.32c1.914 0 3.153.861 3.153 3.091 0 2.232-1.239 3.092-3.153 3.092h-1.32zM19.882.604l-2.563 8.614L14.865.604h-3.314l3.506 10.868h4.424L23.015.604zM41.2 11.472h3.071V.604H41.2zM49.806.608L45.52 11.47h3.026l.678-1.921h5.073l.642 1.921h3.286L53.906.608zm1.992 1.981l1.86 5.089H49.88z"
+                          transform="scale(12) translate(5, 5)"
+                        />
                       </svg>
                     </div>
                     <div
