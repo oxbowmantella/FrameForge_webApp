@@ -186,36 +186,33 @@ export default function CPUSelector() {
   };
 
   const handleSelectCPU = (cpu: CPUResponse) => {
+    setComponent("cpu", {
+      id: generateUniqueId(cpu),
+      name: cpu.name,
+      price: cpu.price,
+      image: processImageUrl(cpu.details.image),
+      type: "cpu",
+      specifications: {
+        socket: cpu.socket,
+        coreCount: cpu.coreCount,
+        coreClock: cpu.coreClock,
+        boostClock: parseFloat(cpu.boostClock),
+        tdp: parseFloat(cpu.tdp),
+        integratedGraphics: cpu.features.integratedGraphics ?? undefined,
+        includesCooler: cpu.features.includesCooler,
+        cache: {
+          l2: parseFloat(cpu.features.cache.l2),
+          l3: parseFloat(cpu.features.cache.l3),
+        },
+        performanceScore: cpu.recommendation.performanceScore,
+      },
+    });
     setSelectedCPU(cpu);
   };
 
   const handleConfirmSelection = () => {
     console.log("Selected CPU:", selectedCPU);
     if (selectedCPU) {
-      // Use the setComponent function from the store
-      setComponent("cpu", {
-        id: generateUniqueId(selectedCPU),
-        name: selectedCPU.name,
-        price: selectedCPU.price,
-        image: processImageUrl(selectedCPU.details.image),
-        type: "cpu",
-        specifications: {
-          socket: selectedCPU.socket,
-          coreCount: selectedCPU.coreCount,
-          coreClock: selectedCPU.coreClock,
-          boostClock: parseFloat(selectedCPU.boostClock),
-          tdp: parseFloat(selectedCPU.tdp),
-          integratedGraphics:
-            selectedCPU.features.integratedGraphics ?? undefined,
-          includesCooler: selectedCPU.features.includesCooler,
-          cache: {
-            l2: parseFloat(selectedCPU.features.cache.l2),
-            l3: parseFloat(selectedCPU.features.cache.l3),
-          },
-          performanceScore: selectedCPU.recommendation.performanceScore,
-        },
-      });
-
       router.push("/pc-builder/motherboard");
     }
   };

@@ -3,7 +3,13 @@ import React from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings2, Edit2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Settings2,
+  Edit2,
+  HomeIcon,
+  DownloadIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 import Image from "next/image";
@@ -70,12 +76,13 @@ const PCComponentSummary = () => {
               Total: {formatPrice(totalSpent)} of {formatPrice(budget)} Budget
             </p>
           </div>
+
           <Button
             variant="outline"
-            onClick={() => router.back()}
-            className="flex items-center gap-2"
+            onClick={() => {}}
+            className="flex items-center gap-2 bg-black text-white"
           >
-            <ArrowLeft className="h-4 w-4" /> Back
+            <DownloadIcon className="h-4 w-4" /> Download
           </Button>
         </div>
 

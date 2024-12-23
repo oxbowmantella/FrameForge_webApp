@@ -84,12 +84,22 @@ interface Cooler {
   isRecommended: boolean;
   compatibility: CoolerCompatibility;
   reasons?: string[];
-  specifications?: {
-    dimensions?: string;
-    material?: string;
-    warranty?: string;
-    features?: string[];
-  };
+  specifications?: CPUCoolerSpecifications;
+}
+
+interface CPUCoolerSpecifications {
+  type: "Liquid" | "Air";
+  height: number;
+  socket: string;
+  tdpRating: string;
+  noiseLevel: number;
+  fanRPM: string;
+  isWaterCooled: boolean;
+  perfImprovement: number;
+}
+
+interface CPUSpecifications {
+  tdp: number;
 }
 
 interface Requirements {
@@ -408,20 +418,63 @@ export default function CoolerListing() {
             }
             className="mb-6"
           >
-            <AlertCircle className="h-4 w-4" />
-            <div className="ml-4">
-              <AlertTitle>
-                {requirements.stockCoolerAssessment.recommendationType ===
-                "Critical"
-                  ? "Aftermarket Cooler Recommended"
-                  : requirements.stockCoolerAssessment.recommendationType ===
-                    "Beneficial"
-                  ? "Consider Upgrading Stock Cooler"
-                  : "Stock Cooler Assessment"}
-              </AlertTitle>
-              <AlertDescription>
-                {requirements.stockCoolerAssessment.reason}
-              </AlertDescription>
+            <div className="flex items-start justify-between w-full">
+              <div className="flex">
+                <AlertCircle className="h-4 w-4" />
+                <div className="ml-4">
+                  <AlertTitle>
+                    {requirements.stockCoolerAssessment.recommendationType ===
+                    "Critical"
+                      ? "Aftermarket Cooler Recommended"
+                      : requirements.stockCoolerAssessment
+                          .recommendationType === "Beneficial"
+                      ? "Consider Upgrading Stock Cooler"
+                      : "Stock Cooler Assessment"}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {requirements.stockCoolerAssessment.reason}
+                  </AlertDescription>
+                </div>
+              </div>
+              {requirements.stockCoolerAssessment.isStockSufficient && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-4 whitespace-nowrap"
+                  onClick={() => {
+                    // Update the store with stock cooler info
+                    setComponent("cpuCooler", {
+                      id: "stock-cooler",
+                      name: "Stock CPU Cooler",
+                      price: 0,
+                      image: "/FrameForge.png",
+                      type: "cooler",
+                      specifications: {
+                        type: "Air",
+                        height: 0, // Usually not needed for stock coolers
+                        socket:
+                          (
+                            components.cpu
+                              ?.specifications as unknown as CPUCoolerSpecifications
+                          )?.socket || "",
+                        tdpRating:
+                          (
+                            components.cpu?.specifications as CPUSpecifications
+                          )?.tdp.toString() || "0",
+                        noiseLevel: 0,
+                        fanRPM: "Default",
+                        isWaterCooled: false,
+                        perfImprovement: 0,
+                      },
+                    });
+                    // Navigate to next page
+                    router.push("/pc-builder/gpu-select");
+                  }}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Use Stock Cooler
+                </Button>
+              )}
             </div>
           </Alert>
         )}
