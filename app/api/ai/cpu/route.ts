@@ -1,126 +1,305 @@
-// /app/api/ai/cpu/route.ts
+// app/api/ai/cpu/route.ts
+
 import { NextResponse } from "next/server";
 import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/community/vectorstores/pinecone";
 
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
+interface CPUResponse {
+  name: string;
+  price: number;
+  socket: string;
+  coreCount: string;
+  coreClock: string;
+  boostClock: string;
+  tdp: string;
+  features: {
+    integratedGraphics: string | null;
+    includesCooler: boolean;
+    cache: {
+      l2: string;
+      l3: string;
+    };
+  };
+  details: {
+    manufacturer: string;
+    series: string;
+    image: string;
+  };
+  recommendation: {
+    isRecommended: boolean;
+    summary: string;
+    reasons: string[];
+    performanceScore: number;
+  };
+}
+
+interface APIResponse {
+  cpus: CPUResponse[];
+  metadata: {
+    totalPages: number;
+    currentPage: number;
+    priceRange: {
+      min: number;
+      max: number;
+    };
+  };
+}
+
+// Helper to determine price range and build context
+const getCPUTier = (budget: number) => {
+  if (budget <= 1000) {
+    return {
+      range: { min: 150, max: 300 },
+      type: 'budget',
+      focus: 'value and efficiency',
+      requirements: 'good performance for everyday tasks and light gaming'
+    };
+  } else if (budget <= 2000) {
+    return {
+      range: { min: 250, max: 500 },
+      type: 'midRange',
+      focus: 'balanced performance',
+      requirements: 'strong gaming and multitasking capabilities'
+    };
+  } else {
+    return {
+      range: { min: 400, max: 800 },
+      type: 'highEnd',
+      focus: 'maximum performance',
+      requirements: 'extreme multitasking and demanding workloads'
+    };
+  }
 };
 
-const parsePageContent = (content: string) => {
+// Parse CPU data from vector store result
+const parseCPUData = (content: string): Record<string, string> => {
   const lines = content.split('\n');
-  const result: { [key: string]: string } = {};
+  const data: Record<string, string> = {};
   
   lines.forEach(line => {
-    const [key, ...valueParts] = line.split(':');
-    if (key && valueParts.length) {
-      result[key.trim()] = valueParts.join(':').trim();
+    const [key, ...values] = line.split(':');
+    if (key && values.length) {
+      data[key.trim()] = values.join(':').trim();
     }
   });
   
-  debugLog('Parsed Content', result);
-  return result;
+  return data;
+};
+
+// Calculate performance score for sorting/ranking
+const calculatePerformanceScore = (cpu: any): number => {
+  let score = 0;
+  
+  // Core count contribution (up to 40 points)
+  const cores = parseInt(cpu.coreCount?.replace(/\D/g, '') || '0');
+  score += (cores / 16) * 40; // Normalized to 16 cores max
+  
+  // Clock speed contribution (up to 30 points)
+  const baseClock = parseFloat(cpu.coreClock?.replace(/[^0-9.]/g, '') || '0');
+  const boostClock = parseFloat(cpu.boostClock?.replace(/[^0-9.]/g, '') || '0');
+  score += ((baseClock + boostClock) / 2 / 5.0) * 30; // Normalized to 5.0 GHz
+  
+  // Cache contribution (up to 20 points)
+  const l3Cache = parseInt(cpu.features.cache.l3?.replace(/[^0-9]/g, '') || '0');
+  score += (l3Cache / 128) * 20; // Normalized to 128MB max
+  
+  // Power/TDP contribution (up to 10 points)
+  const tdp = parseInt(cpu.tdp?.replace(/\D/g, '') || '0');
+  if (tdp > 0) {
+    score += (tdp / 125) * 10; // Normalized to 125W
+  }
+  
+  return Math.min(Math.round(score), 100);
+};
+
+// Evaluate CPU and generate recommendation
+const evaluateCPU = (cpu: any, tierInfo: ReturnType<typeof getCPUTier>, performanceScore: number) => {
+  const reasons: string[] = [];
+  
+  // Core evaluation
+  const cores = parseInt(cpu.coreCount?.replace(/\D/g, '') || '0');
+  if (cores > 0) {
+    reasons.push(
+      cores >= 12 ? `Excellent ${cores}-core configuration for heavy multitasking` :
+      cores >= 8 ? `Strong ${cores}-core setup for gaming and productivity` :
+      cores >= 6 ? `Capable ${cores}-core processor for mainstream use` :
+      `Basic ${cores}-core processor for general computing`
+    );
+  }
+
+  // Clock speed evaluation
+  const boostClock = cpu.boostClock || cpu.coreClock;
+  if (boostClock) {
+    reasons.push(`Reaches ${boostClock} for strong single-threaded performance`);
+  }
+
+  // Cache evaluation
+  if (cpu.features.cache.l3 !== 'Unknown' && cpu.features.cache.l3 !== '0 MB') {
+    reasons.push(`${cpu.features.cache.l3} L3 cache enhances overall responsiveness`);
+  }
+
+  // Features evaluation
+  if (cpu.features.integratedGraphics) {
+    reasons.push(
+      tierInfo.type === 'budget'
+        ? `Integrated ${cpu.features.integratedGraphics} provides basic graphics capability`
+        : `Includes ${cpu.features.integratedGraphics} as a backup display option`
+    );
+  }
+
+  if (cpu.features.includesCooler) {
+    reasons.push(
+      tierInfo.type === 'budget'
+        ? 'Bundled cooler provides immediate cost savings'
+        : 'Includes stock cooler, though aftermarket cooling recommended for maximum performance'
+    );
+  }
+
+  return {
+    isRecommended: false, // Will be set later for top 3
+    summary: `${tierInfo.type === 'highEnd' ? 'High-performance' : 
+              tierInfo.type === 'midRange' ? 'Balanced' : 
+              'Value-oriented'} processor with a performance score of ${performanceScore}/100`,
+    reasons,
+    performanceScore
+  };
 };
 
 export async function POST(req: Request) {
+  console.log('🚀 Starting CPU route handler');
+  
   try {
-    const { budget, motherboard, page = 1, itemsPerPage = 10, searchTerm = "" } = await req.json();
-    debugLog('Request Parameters', { budget, motherboard, page, itemsPerPage, searchTerm });
+    if (!process.env.PINECONE_API_KEY || !process.env.OPENAI_API_KEY) {
+      throw new Error('Missing required environment variables');
+    }
 
-    // Initialize AI and vector store
-    const embeddings = new OpenAIEmbeddings();
+    const { budget, cpuBrand, page = 1 } = await req.json();
+    const itemsPerPage = 10;
+    
+    console.log('📥 Request:', { budget, cpuBrand, page });
+
+    const tierInfo = getCPUTier(budget);
+    console.log('📊 Build Tier:', tierInfo);
+
+    // Initialize AI services
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY
+    });
+
     const pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!
+      apiKey: process.env.PINECONE_API_KEY
     });
 
     const index = pinecone.Index("pc-parts");
     const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-      pineconeIndex: index
+      pineconeIndex: index,
     });
 
-    // Calculate CPU budget range (typically 15-25% of total budget)
-    const minCpuBudget = budget * 0.15;
-    const maxCpuBudget = budget * 0.25;
-
-    // Create search string considering motherboard compatibility
-    const searchString = `
-      CPU components with these characteristics:
-      price range $${minCpuBudget} to $${maxCpuBudget}
-      socket type ${motherboard?.specifications?.socket || 'modern sockets'}
-      high performance characteristics
-      ${searchTerm}
+    // Construct search query
+    const query = `
+      Find ${cpuBrand || ''} processors
+      Price range $${tierInfo.range.min} to $${tierInfo.range.max}
+      ${tierInfo.focus}
+      ${tierInfo.requirements}
     `.trim();
 
-    debugLog('Search String', searchString);
+    console.log('🔍 Query:', query);
 
-    // Perform the search
-    const searchResults = await vectorStore.similaritySearch(searchString, 20);
-    debugLog('Search Results Count', searchResults.length);
+    // Perform search
+    const searchResults = await vectorStore.similaritySearch(query, 50);
+    console.log(`✨ Found ${searchResults.length} initial results`);
 
-    // Process and parse the results
-    const cpus = searchResults
-      .map((result, index) => {
-        const parsedContent = parsePageContent(result.pageContent);
-        debugLog(`Parsed CPU ${index}`, parsedContent);
+    // Log initial results sample
+    console.log('\n📝 Initial Results Sample:');
+    searchResults.slice(0, 5).forEach((result, index) => {
+      const data = parseCPUData(result.pageContent);
+      console.log(`\nCPU ${index + 1}:`);
+      console.log(`Name: ${data.Name}`);
+      console.log(`Price: ${data.Price}`);
+      console.log(`Clock: ${data['Performance Core Clock'] || data['Core Clock']}`);
+      console.log(`Boost: ${data['Performance Core Boost Clock'] || data['Boost Clock']}`);
+    });
 
-        // Skip invalid entries
-        if (!parsedContent.Name || !parsedContent.Price) {
-          console.log('Skipping invalid CPU data:', parsedContent);
+    // Process all CPUs
+    let cpus: CPUResponse[] = searchResults
+      .map(result => {
+        const data = parseCPUData(result.pageContent);
+        const price = parseFloat(data.Price?.replace(/[$,]/g, '') || '0');
+        
+        // Log processing details
+        console.log('\n🔄 Processing CPU:');
+        console.log(`Name: ${data.Name}`);
+        console.log(`Raw Price: ${data.Price}`);
+        console.log(`Parsed Price: ${price}`);
+
+        // Skip invalid CPUs
+        if (!price || !data.Name || 
+            (cpuBrand && !data.Manufacturer?.toLowerCase().includes(cpuBrand.toLowerCase()))) {
+          console.log('❌ Skipping: Invalid price or brand mismatch');
           return null;
         }
 
-        const price = parseFloat(parsedContent.Price.replace('$', ''));
-        if (isNaN(price) || price === 0) {
-          return null;
-        }
-
-        // Check socket compatibility if motherboard is selected
-        if (motherboard && motherboard.specifications.socket) {
-          const cpuSocket = parsedContent.Socket;
-          if (!cpuSocket?.includes(motherboard.specifications.socket)) {
-            return null;
-          }
-        }
-
-        return {
-          id: `cpu-${index}`,
-          name: parsedContent.Name,
-          image: parsedContent['Image URL'],
-          manufacturer: parsedContent.Manufacturer || 'Unknown',
-          price: price,
-          socket: parsedContent.Socket || 'Unknown',
-          series: parsedContent.Series || 'Unknown',
-          coreCount: parsedContent['Core Count'] || 'Unknown',
-          coreClock: parsedContent['Performance Core Clock'] || parsedContent['Core Clock'] || 'Unknown',
-          boostClock: parsedContent['Performance Core Boost Clock'] || parsedContent['Boost Clock'] || 'Unknown',
-          tdp: parsedContent.TDP || 'Unknown',
-          integratedGraphics: parsedContent['Integrated Graphics'] || 'None',
-          cache: {
-            l2: parsedContent['L2 Cache'] || 'Unknown',
-            l3: parsedContent['L3 Cache'] || 'Unknown'
+        // Create CPU object
+        const cpu: CPUResponse = {
+          name: data.Name,
+          price,
+          socket: data.Socket || 'Unknown',
+          coreCount: data['Core Count'] || 'Unknown',
+          coreClock: data['Performance Core Clock'] || data['Core Clock'] || 'Unknown',
+          boostClock: data['Performance Core Boost Clock'] || data['Boost Clock'] || 'Unknown',
+          tdp: data.TDP || 'Unknown',
+          features: {
+            integratedGraphics: data['Integrated Graphics'] || null,
+            includesCooler: 
+              data['Includes Cooler']?.toLowerCase() === 'yes' || 
+              data['Includes CPU Cooler']?.toLowerCase() === 'yes',
+            cache: {
+              l2: data['L2 Cache'] || 'Unknown',
+              l3: data['L3 Cache'] || 'Unknown'
+            }
           },
-          score: 0.8 - (index * 0.05),
-          isRecommended: index < 5,
-          reasons: [
-            `Socket ${parsedContent.Socket} compatible with selected motherboard`,
-            parsedContent['Core Count'] ? `${parsedContent['Core Count']} cores for enhanced performance` : null,
-            parsedContent['Integrated Graphics'] ? `Includes ${parsedContent['Integrated Graphics']} integrated graphics` : null,
-            parsedContent.TDP ? `${parsedContent.TDP} TDP for power efficiency` : null
-          ].filter(Boolean)
+          details: {
+            manufacturer: data.Manufacturer || 'Unknown',
+            series: data.Series || 'Unknown',
+            image: data['Image URL'] || ''
+          },
+          recommendation: {
+            isRecommended: false,
+            summary: '',
+            reasons: [],
+            performanceScore: 0
+          }
         };
+
+        // Calculate performance score
+        const performanceScore = calculatePerformanceScore(cpu);
+        console.log(`Performance Score: ${performanceScore}`);
+
+        // Generate recommendation
+        cpu.recommendation = evaluateCPU(cpu, tierInfo, performanceScore);
+        
+        return cpu;
       })
-      .filter((cpu): cpu is NonNullable<typeof cpu> => cpu !== null)
-      .sort((a, b) => a.price - b.price);
+      .filter((cpu): cpu is CPUResponse => cpu !== null);
 
-    debugLog('Processed CPUs Sample', cpus.slice(0, 2));
+    console.log(`✅ Processed ${cpus.length} valid CPUs`);
 
-    // Handle no results case
+    // Sort by performance score
+    cpus.sort((a, b) => b.recommendation.performanceScore - a.recommendation.performanceScore);
+
+    // Mark top 3 as recommended
+    cpus.slice(0, 3).forEach(cpu => {
+      cpu.recommendation.isRecommended = true;
+      cpu.recommendation.summary = 'Top Recommended: ' + cpu.recommendation.summary;
+    });
+
+    // Handle no results
     if (cpus.length === 0) {
       return new NextResponse(JSON.stringify({
-        error: 'No CPUs found matching your criteria',
-        details: 'Try adjusting your search terms or budget range',
+        error: 'No CPUs found',
+        details: 'Try adjusting your budget or brand selection',
+        tierInfo
       }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
@@ -130,44 +309,30 @@ export async function POST(req: Request) {
     // Paginate results
     const startIndex = (page - 1) * itemsPerPage;
     const paginatedCPUs = cpus.slice(startIndex, startIndex + itemsPerPage);
-
-    const response = {
+    
+    const response: APIResponse = {
       cpus: paginatedCPUs,
-      totalCount: cpus.length,
-      page,
-      itemsPerPage,
-      searchTerm,
-      budget,
-      searchCriteria: {
-        priceRange: {
-          min: minCpuBudget,
-          max: maxCpuBudget
-        },
-        socket: motherboard?.specifications?.socket,
-        recommendedFeatures: [
-          'High core count',
-          'Latest generation',
-          'Power efficient'
-        ]
+      metadata: {
+        totalPages: Math.ceil(cpus.length / itemsPerPage),
+        currentPage: page,
+        priceRange: tierInfo.range
       }
     };
 
-    debugLog('Final Response Stats', {
-      totalResults: response.totalCount,
-      currentPage: response.page,
-      resultsInPage: response.cpus.length
-    });
-
     return new NextResponse(JSON.stringify(response), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, max-age=0'
+      },
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
+    
     return new NextResponse(JSON.stringify({
       error: 'Failed to process CPU recommendations',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.message : 'An unexpected error occurred',
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

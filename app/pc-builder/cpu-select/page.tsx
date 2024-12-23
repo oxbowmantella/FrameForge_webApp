@@ -4,9 +4,11 @@ import { MagicCard } from "@/components/ui/magic-card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 
 const CpuBrandSelector = () => {
   const router = useRouter();
+  const { setCPUBrand } = usePCBuilderStore();
   const [selectedBrand, setSelectedBrand] = useState<"amd" | "intel" | null>(
     null
   );
@@ -16,6 +18,28 @@ const CpuBrandSelector = () => {
     e.stopPropagation();
     console.log("Selecting brand:", brand);
     setSelectedBrand(brand);
+  };
+
+  const handleNext = () => {
+    if (selectedBrand) {
+      console.log("Setting CPU brand in store:", {
+        selectedBrand: selectedBrand.toUpperCase(),
+      });
+
+      // Set the CPU brand in store
+      setCPUBrand(selectedBrand.toUpperCase() as "AMD" | "Intel");
+
+      // Verify the stored value
+      setTimeout(() => {
+        const currentPreferences = usePCBuilderStore.getState().preferences;
+        console.log("Verified store values after setting:", {
+          storedCPUBrand: currentPreferences.cpuBrand,
+          allPreferences: currentPreferences,
+        });
+      }, 0);
+
+      router.push("/pc-builder/cpu");
+    }
   };
 
   return (
@@ -44,7 +68,7 @@ const CpuBrandSelector = () => {
               <Button
                 variant="default"
                 size="default"
-                onClick={() => router.push("/pc-builder/cpu")}
+                onClick={() => handleNext()}
                 className="flex-1 sm:flex-none gap-2"
                 disabled={!selectedBrand}
               >

@@ -152,7 +152,6 @@ export default function PCBuilderLayout({
 
   // Calculate budget percentage
   const budgetPercentage = budget > 0 ? (totalSpent / budget) * 100 : 0;
-  console.log(Object.entries(components));
 
   // Convert components object to array for display
   const selectedParts = Object.entries(components)

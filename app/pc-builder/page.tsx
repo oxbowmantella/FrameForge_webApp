@@ -105,14 +105,30 @@ const PCShowcase = () => {
     }, duration / steps);
   };
 
-  // In PCShowcase component
   const handleNext = () => {
-    // Ensure final values are set in storage
+    console.log("Setting final budget values:", {
+      selectedPrice,
+      currentType: currentType.title,
+    });
+
+    // Set the final values in store before navigation
     setBudget(selectedPrice);
     setSelectedType(currentType.title);
+
+    // Log the current store state after setting
+    // Note: since store updates are asynchronous, we'll want to verify the actual store state
+    setTimeout(() => {
+      const currentBudget = usePCBuilderStore.getState().budget;
+      const currentType = usePCBuilderStore.getState().selectedType;
+
+      console.log("Verified store values after setting:", {
+        storedBudget: currentBudget,
+        storedType: currentType,
+      });
+    }, 0);
+
     router.push("/pc-builder/cpu-select");
   };
-
   const currentType = getTypeFromPrice(selectedPrice);
 
   return (

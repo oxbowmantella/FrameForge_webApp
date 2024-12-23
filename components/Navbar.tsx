@@ -137,7 +137,7 @@ export function Navbar() {
                         <ListItem
                           key={component.title}
                           title={component.title}
-                          href={component.href}
+                          href={"#"}
                         >
                           {component.description}
                         </ListItem>
@@ -147,7 +147,7 @@ export function Navbar() {
                 </NavigationMenuItem>
 
                 <NavigationMenuItem>
-                  <Link href="/community" legacyBehavior passHref>
+                  <Link href="#" legacyBehavior passHref>
                     <NavigationMenuLink
                       className={cn(
                         navigationMenuTriggerStyle(),
