@@ -8,7 +8,7 @@ const nextConfig = {
       "images-na.ssl-images-amazon.com",
       "images-eu.ssl-images-amazon.com",
       "images-fe.ssl-images-amazon.com",
-    ], // Add the domain here
+    ],
   },
   eslint: {
     ignoreDuringBuilds: true,
