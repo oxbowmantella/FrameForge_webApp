@@ -88,7 +88,6 @@ const PCComponentSummary = () => {
           </Button>
         </div>
         {/* Components Grid */}
-        const component = components[key as ComponentKey];
         {componentOrder.map(({ key, label, route }) => {
           const component = components[key as ComponentKey];
 

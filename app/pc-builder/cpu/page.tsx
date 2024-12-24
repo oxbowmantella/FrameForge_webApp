@@ -506,7 +506,7 @@ export default function CPUSelector() {
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+              <ChevronLeft className="w-4 h-4 mr-2" />
             </Button>
             <span className="flex items-center">
               Page {currentPage} of {data.metadata.totalPages}
@@ -516,33 +516,10 @@ export default function CPUSelector() {
               onClick={handleNextPage}
               disabled={currentPage === data.metadata.totalPages}
             >
-              Next <ChevronRight className="w-4 h-4 ml-2" />
+              <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         )}
-
-        {/* Mobile Navigation */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleBack}
-              className="flex-1"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-            <Button
-              variant="default"
-              size="lg"
-              onClick={handleConfirmSelection}
-              className="flex-1"
-              disabled={!selectedCPU}
-            >
-              Next <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
 
         {/* Bottom Padding for Mobile Navigation */}
         <div className="h-24 lg:h-0" />
