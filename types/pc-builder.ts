@@ -1,180 +1,204 @@
-// Common interfaces
-interface BaseSpecifications {
-  manufacturer: string;
+// Base Types
+interface BaseComponent {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  type: ComponentType;
 }
 
-// Component-specific specification interfaces
-interface MotherboardSpecifications extends BaseSpecifications {
+type ComponentType = 'case' | 'cpu' | 'cpuCooler' | 'gpu' | 'memory' | 'motherboard' | 'psu' | 'storage';
+
+// CPU Types
+interface CPUSpecifications {
+  socket: string;
+  coreCount: string;
+  coreClock: string;
+  boostClock: number;
+  tdp: number;
+  integratedGraphics?: string;
+  includesCooler: boolean;
+  cache: {
+    l2: number;
+    l3: number;
+  };
+  performanceScore: number;
+}
+
+interface CPU extends BaseComponent {
+  type: 'cpu';
+  specifications: CPUSpecifications;
+}
+
+// Motherboard Types
+interface MotherboardSpecifications {
   socket: string;
   formFactor: string;
   chipset: string;
+  manufacturer: string;
   memoryType: string;
   memoryMax: string;
   memorySlots: number;
   m2Slots: number;
   pciSlots: number;
-  sataSlots: number;
-  wirelessNetworking?: string;
-  usb32Gen2Headers?: number;
-  usb32Gen1Headers?: number;
+  sataSlots: string;
 }
 
-interface CPUSpecifications extends BaseSpecifications {
-  socket: string;
-  cores: number;
-  threads: number;
-  baseClock: number;
-  boostClock: number;
-  tdp: number;
-  cache: {
-    l1?: number;
-    l2?: number;
-    l3?: number;
-  };
-  integratedGraphics?: string;
+interface Motherboard extends BaseComponent {
+  type: 'motherboard';
+  specifications: MotherboardSpecifications;
 }
 
-interface GPUSpecifications extends BaseSpecifications {
+// GPU Types
+interface GPUSpecifications {
   chipset: string;
-  memory: {
-    size: number;
-    type: string;
-    clock: number;
-  };
-  coreClock: number;
-  boostClock: number;
-  length: number;
+  memory: string;
+  memoryType: string;
   tdp: number;
-  powerConnectors: string[];
-  outputs: {
-    hdmi?: number;
-    displayPort?: number;
-    usbc?: number;
-  };
+  length: number;
+  powerConnectors: string;
 }
 
-interface MemorySpecifications extends BaseSpecifications {
+interface GPU extends BaseComponent {
+  type: 'gpu';
+  specifications: GPUSpecifications;
+}
+
+// Memory Types
+interface MemorySpecifications {
+  speed: string;
+  modules: string;
+  timing: string;
+  voltage: string;
+}
+
+interface Memory extends BaseComponent {
+  type: 'memory';
+  specifications: MemorySpecifications;
+}
+
+// Storage Types
+interface StorageSpecifications {
   capacity: number;
   type: string;
-  speed: number;
-  modules: number;
-  timing: string;
-  voltage: number;
-  ecc: boolean;
-  heatSpreader: boolean;
-}
-
-interface StorageSpecifications extends BaseSpecifications {
-  capacity: number;
-  type: 'SSD' | 'HDD' | 'NVMe';
   formFactor: string;
   interface: string;
-  cache?: number;
-  readSpeed?: number;
-  writeSpeed?: number;
-  tbw?: number;
+  isNVMe: boolean;
 }
 
-interface PowerSupplySpecifications extends BaseSpecifications {
+interface Storage extends BaseComponent {
+  type: 'storage';
+  specifications: StorageSpecifications;
+}
+
+// PSU Types
+interface PSUSpecifications {
   wattage: number;
   efficiency: string;
-  modular: 'Full' | 'Semi' | 'No';
-  formFactor: string;
+  modular: string;
   connectors: {
+    eps8pin: number;
     pcie8pin: number;
     pcie6pin: number;
     sata: number;
     molex: number;
-    eps: number;
   };
-  fanless: boolean;
 }
 
-interface CaseSpecifications extends BaseSpecifications {
-  formFactor: string[];
-  dimensions: {
-    height: number;
-    width: number;
-    depth: number;
-  };
-  maxGPULength: number;
-  maxCPUCoolerHeight: number;
-  driveBays: {
-    internal25: number;
-    internal35: number;
-    external525?: number;
-  };
-  fans: {
-    included: number;
-    maxSupported: number;
-  };
-  radiatorSupport: string[];
-  sidePanelWindow: boolean;
+interface PSU extends BaseComponent {
+  type: 'psu';
+  specifications: PSUSpecifications;
 }
 
-interface CPUCoolerSpecifications extends BaseSpecifications {
-  type: 'Air' | 'AIO' | 'Custom';
-  height?: number;
-  radiatorSize?: number;
-  sockets: string[];
-  fanRPM: {
-    min: number;
-    max: number;
-  };
-  noiseLevel: {
-    min: number;
-    max: number;
-  };
-  tdp: number;
+// Case Types
+interface CaseSpecifications {
+  maxGpuLength: number;
+  formFactors: string[];
+  frontPorts: string;
+  hasUSBC: boolean;
 }
 
-// Component type with specific specifications
-export interface PCPart {
-  id: string;
-  name: string;
-  manufacturer: string;
-  image: string;
-  price: number;
-  type: keyof PCBuildState['components'];
-  specifications: 
-    | MotherboardSpecifications 
-    | CPUSpecifications 
-    | GPUSpecifications 
-    | MemorySpecifications 
-    | StorageSpecifications 
-    | PowerSupplySpecifications 
-    | CaseSpecifications 
-    | CPUCoolerSpecifications;
+interface Case extends BaseComponent {
+  type: 'case';
+  specifications: CaseSpecifications;
 }
 
-// The main state interface
-export interface PCBuildState {
+// CPU Cooler Types
+interface CPUCoolerSpecifications {
+  type: 'Liquid' | 'Air';
+  height: number;
+  socket: string;
+  tdpRating: string;
+  noiseLevel: number;
+  fanRPM: string;
+  isWaterCooled: boolean;
+  perfImprovement: number;
+}
+
+interface CPUCooler extends BaseComponent {
+  type: 'cpuCooler';
+  specifications: CPUCoolerSpecifications;
+}
+
+// Component Union Type
+type PCComponent = CPU | Motherboard | GPU | Memory | Storage | PSU | Case | CPUCooler;
+
+// Store State Interface
+interface PCBuildState {
   budget: number;
   selectedType: string;
   totalSpent: number;
   components: {
-    psu: any;
-    cooler: any;
-    case: PCPart | null;
-    cpuCooler: PCPart | null;
-    cpu: PCPart | null;
-    gpu: PCPart | null;
-    memory: PCPart | null;
-    motherboard: PCPart | null;
-    powerSupply: PCPart | null;
-    storage: PCPart | null;
+    case: Case | null;
+    cpu: CPU | null;
+    cpuCooler: CPUCooler | null;
+    gpu: GPU | null;
+    memory: Memory | null;
+    motherboard: Motherboard | null;
+    psu: PSU | null;
+    storage: Storage | null;
+  };
+  preferences: {
+    cpuBrand: 'Intel' | 'AMD' | null;
+    gpuBrand: 'NVIDIA' | 'AMD' | 'Integrated' | null;
+    hasCPUCooler: boolean;
+    hasIntegratedGraphics: boolean;
   };
 }
 
-// Type guard functions to check specification types
-export function isMotherboardSpec(spec: any): spec is MotherboardSpecifications {
-  return 'socket' in spec && 'formFactor' in spec && 'chipset' in spec;
+// Store Actions Interface
+interface PCBuildActions {
+  setBudget: (budget: number) => void;
+  setSelectedType: (type: string) => void;
+  setComponent: (componentType: keyof PCBuildState['components'], component: PCComponent | null) => void;
+  setCPUBrand: (brand: 'Intel' | 'AMD' | null) => void;
+  setGPUBrand: (brand: 'NVIDIA' | 'AMD' | 'Integrated' | null) => void;
+  setHasCPUCooler: (hasCooler: boolean) => void;
+  setHasIntegratedGraphics: (hasIntegrated: boolean) => void;
+  clearBuild: () => void;
+  getRemainingBudget: () => number;
+  isComponentSelected: (componentType: keyof PCBuildState['components']) => boolean;
 }
 
-export function isCPUSpec(spec: any): spec is CPUSpecifications {
-  return 'cores' in spec && 'threads' in spec && 'socket' in spec;
-}
-
-export function isGPUSpec(spec: any): spec is GPUSpecifications {
-  return 'chipset' in spec && 'memory' in spec && 'coreClock' in spec;
-}
+export type { 
+  PCBuildState,
+  PCBuildActions,
+  PCComponent,
+  ComponentType,
+  CPU,
+  Motherboard,
+  GPU,
+  Memory,
+  Storage,
+  PSU,
+  Case,
+  CPUCooler,
+  CPUSpecifications,
+  MotherboardSpecifications,
+  GPUSpecifications,
+  MemorySpecifications,
+  StorageSpecifications,
+  PSUSpecifications,
+  CaseSpecifications,
+  CPUCoolerSpecifications
+};

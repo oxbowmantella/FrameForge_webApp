@@ -165,9 +165,6 @@ export default function MotherboardSelector() {
       }
 
       const data: APIResponse = await response.json();
-
-      if (data.error) throw new Error(data.error);
-
       setMotherboards(data.motherboards || []);
       setTotalPages(Math.ceil((data.totalCount || 0) / ITEMS_PER_PAGE));
       setSearchCriteria(data.searchCriteria);
@@ -467,7 +464,7 @@ export default function MotherboardSelector() {
                           tooltip="Maximum RAM Support"
                         />
                         <FeatureBadge
-                          icon={Memory}
+                          icon={MemoryStickIcon}
                           text={`${board.memorySlots} DIMM Slots`}
                           variant="secondary"
                           tooltip="Number of RAM Slots"
