@@ -18,6 +18,8 @@ const PCComponentSummary = () => {
   const router = useRouter();
   const { components, budget, totalSpent } = usePCBuilderStore();
 
+  type ComponentKey = keyof typeof components;
+
   // Helper function to format price
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -85,92 +87,90 @@ const PCComponentSummary = () => {
             <DownloadIcon className="h-4 w-4" /> Download
           </Button>
         </div>
-
         {/* Components Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {componentOrder.map(({ key, label, route }) => {
-            const component = components[key];
+        const component = components[key as ComponentKey];
+        {componentOrder.map(({ key, label, route }) => {
+          const component = components[key as ComponentKey];
 
-            return (
-              <Card
-                key={key}
-                className={`transition-all duration-300 relative group ${
-                  component ? "border-primary/20" : "border-dashed"
-                }`}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Settings2 className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-lg">{label}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {component && (
-                      <Badge variant="secondary">
-                        {formatPrice(component.price)}
-                      </Badge>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => router.push(route)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {component ? (
-                    <div className="flex gap-4">
-                      <div className="relative w-24 h-24 bg-secondary/10 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image
-                          src={component.image}
-                          alt={component.name}
-                          fill
-                          className="object-contain"
-                          sizes="(max-width: 96px) 100vw, 96px"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {component.name}
-                        </p>
-                        {component.specifications && (
-                          <div className="mt-2 space-y-1">
-                            {Object.entries(component.specifications).map(
-                              ([key, value]) =>
-                                value && (
-                                  <p
-                                    key={key}
-                                    className="text-xs text-muted-foreground truncate"
-                                  >
-                                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                                    : {formatSpecValue(value)}
-                                  </p>
-                                )
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      className="flex flex-col items-center justify-center h-24 bg-secondary/5 rounded-lg cursor-pointer hover:bg-secondary/10 transition-colors"
-                      onClick={() => router.push(route)}
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        No {label} Selected
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Click to add
-                      </p>
-                    </div>
+          return (
+            <Card
+              key={key}
+              className={`transition-all duration-300 relative group ${
+                component ? "border-primary/20" : "border-dashed"
+              }`}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-lg">{label}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {component && (
+                    <Badge variant="secondary">
+                      {formatPrice(component.price)}
+                    </Badge>
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => router.push(route)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {component ? (
+                  <div className="flex gap-4">
+                    <div className="relative w-24 h-24 bg-secondary/10 rounded-lg overflow-hidden flex-shrink-0">
+                      <Image
+                        src={component.image}
+                        alt={component.name}
+                        fill
+                        className="object-contain"
+                        sizes="(max-width: 96px) 100vw, 96px"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {component.name}
+                      </p>
+                      {component.specifications && (
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(component.specifications).map(
+                            ([key, value]) =>
+                              value && (
+                                <p
+                                  key={key}
+                                  className="text-xs text-muted-foreground truncate"
+                                >
+                                  {key.charAt(0).toUpperCase() + key.slice(1)}:{" "}
+                                  {formatSpecValue(value)}
+                                </p>
+                              )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="flex flex-col items-center justify-center h-24 bg-secondary/5 rounded-lg cursor-pointer hover:bg-secondary/10 transition-colors"
+                    onClick={() => router.push(route)}
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      No {label} Selected
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click to add
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

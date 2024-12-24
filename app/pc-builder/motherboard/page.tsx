@@ -29,7 +29,7 @@ import {
   ChevronRight,
   Star,
   CircuitBoard,
-  Memory,
+  MemoryStickIcon,
   Database,
 } from "lucide-react";
 
@@ -455,7 +455,7 @@ export default function MotherboardSelector() {
                           tooltip="Motherboard Form Factor"
                         />
                         <FeatureBadge
-                          icon={Memory}
+                          icon={MemoryStickIcon}
                           text={`${board.memoryType}`}
                           variant="outline"
                           tooltip="Memory Type"
