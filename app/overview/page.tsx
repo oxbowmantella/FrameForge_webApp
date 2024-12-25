@@ -27,17 +27,22 @@ import { useRouter } from "next/navigation";
 import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-
+import { generatePDF } from "@/utils/pdfGenerator";
 // Custom Bento Grid Components
 const BentoGrid = ({
   className,
   children,
+  id, // Add id to props
 }: {
   className?: string;
   children: React.ReactNode;
+  id?: string;
 }) => {
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-6 gap-6", className)}>
+    <div
+      id={id} // Add id here
+      className={cn("grid grid-cols-1 md:grid-cols-6 gap-6", className)}
+    >
       {children}
     </div>
   );
@@ -144,6 +149,13 @@ function ComponentContent({
             fill
             className="object-contain"
             sizes="80px"
+            crossOrigin="anonymous"
+            loading="eager"
+            onError={(e) => {
+              // Fallback for failed images
+              const imgElement = e.target as HTMLImageElement;
+              imgElement.src = "/FrameForge.png";
+            }}
           />
         </div>
         <div className="flex-1 min-w-0">
@@ -187,6 +199,7 @@ function ComponentContent({
 export default function PCComponentSummary() {
   const router = useRouter();
   const { components, budget, totalSpent, preferences } = usePCBuilderStore();
+  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -195,6 +208,18 @@ export default function PCComponentSummary() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `PC-Build-${timestamp}.pdf`;
+      console.log("Downloading PDF...");
+      await generatePDF("pc-build-grid", filename);
+      console.log("PDF Downloaded!");
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    }
   };
 
   const percentageUsed = Math.round((totalSpent / budget) * 100);
@@ -299,13 +324,21 @@ export default function PCComponentSummary() {
           <Button
             variant="outline"
             className="flex items-center gap-2 bg-black text-white"
-            onClick={() => {}}
+            onClick={handleDownload}
+            disabled={isGeneratingPDF}
           >
-            <DownloadIcon className="h-4 w-4" /> Download
+            {isGeneratingPDF ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <DownloadIcon className="h-4 w-4" />
+            )}
+            {isGeneratingPDF ? "Generating..." : "Download"}
           </Button>
         </div>
 
-        <BentoGrid>
+        <BentoGrid id="pc-build-grid">
+          {" "}
+          {/* Make sure this ID is added */}
           {gridItems.map((item, idx) => (
             <BentoCard
               key={idx}
