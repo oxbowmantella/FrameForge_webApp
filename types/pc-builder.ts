@@ -149,6 +149,7 @@ interface PCBuildState {
   selectedType: string;
   totalSpent: number;
   components: {
+    cooler: any;
     case: Case | null;
     cpu: CPU | null;
     cpuCooler: CPUCooler | null;

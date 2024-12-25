@@ -127,7 +127,7 @@ const IntegratedGraphicsCard = ({
 
 export default function GPUSelection() {
   const router = useRouter();
-  const { budget, setComponent, components } = usePCBuilderStore();
+  const { budget, setComponent, components, preferences } = usePCBuilderStore();
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
@@ -154,6 +154,9 @@ export default function GPUSelection() {
           itemsPerPage: ITEMS_PER_PAGE,
           searchTerm: searchTerm.trim(),
           components,
+          preferences: {
+            gpuBrand: preferences.gpuBrand, // Add this
+          },
         }),
       });
 

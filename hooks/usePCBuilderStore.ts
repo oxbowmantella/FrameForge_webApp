@@ -31,7 +31,6 @@ const defaultState: ExtendedPCBuildState = {
     gpu: null,
     memory: null,
     motherboard: null,
-    powerSupply: null,
     storage: null,
     cooler: null,
     psu: null
@@ -66,9 +65,17 @@ export const usePCBuilderStore = create(
     clearBuild: () => void;
     getRemainingBudget: () => number;
     isComponentSelected: (componentType: keyof ExtendedPCBuildState['components']) => boolean;
+    logStoreState: () => void;
   }>(
     (set, get) => ({
       ...defaultState,
+
+      logStoreState: () => {
+        const state = get();
+        console.group('📦 PC Builder Store - Complete State');
+        console.log(state);
+        console.groupEnd();
+      },
 
       setBudget: (budget: number) => {
         logStateChange('Set Budget', { budget });

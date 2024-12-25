@@ -3,6 +3,9 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/community/vectorstores/pinecone";
 
+// Type definitions to match store
+type GPUBrand = 'NVIDIA' | 'AMD' | 'Integrated' | null;
+
 interface SystemRequirements {
   cpuName: string;
   cpuTier: 'ENTRY' | 'MID' | 'HIGH' | 'ULTRA';
@@ -22,6 +25,24 @@ interface IGPUAnalysis {
   recommendedRange?: {
     min: number;
     max: number;
+  };
+}
+
+interface RequestPayload {
+  budget: number;
+  page?: number;
+  itemsPerPage?: number;
+  searchTerm?: string;
+  components: {
+    cpu: any;
+    psu: any;
+    case: any;
+    motherboard: any;
+    memory: any;
+    storage: any;
+  };
+  preferences: {
+    gpuBrand: GPUBrand;
   };
 }
 
@@ -156,7 +177,7 @@ const parseGPUData = (content: string): Record<string, any> => {
 const calculateMatchScore = (
   gpuData: Record<string, any>,
   systemReqs: SystemRequirements,
-  gpuBrand: string
+  gpuBrand: GPUBrand
 ): number => {
   let score = 0;
   const targetTier = GPU_TIERS[systemReqs.cpuTier];
@@ -199,8 +220,10 @@ const calculateMatchScore = (
 const generatePerformanceInsights = (
   gpuData: Record<string, any>,
   systemReqs: SystemRequirements,
-  gpuBrand: string
+  gpuBrand: GPUBrand
 ): string[] => {
+  if (!gpuBrand || gpuBrand === 'Integrated') return [];
+  
   const insights: string[] = [];
   const cpuName = systemReqs.cpuName || 'your CPU';
   const tierUses = GPU_TIERS[systemReqs.cpuTier].uses;
@@ -217,7 +240,7 @@ const generatePerformanceInsights = (
       'NVIDIA NVENC for efficient streaming and recording',
       'Ray tracing capabilities for enhanced visual quality'
     );
-  } else {
+  } else if (gpuBrand === 'AMD') {
     insights.push(
       'AMD FSR support for upscaling performance',
       'AMD Smart Access Memory compatibility with AMD CPUs',
@@ -232,14 +255,18 @@ const generatePerformanceInsights = (
 const generateSearchContext = (
   components: any,
   budget: number,
-  gpuBrand: string,
+  gpuBrand: GPUBrand,
   systemReqs: SystemRequirements
 ): string => {
+  if (!gpuBrand || gpuBrand === 'Integrated') {
+    return '';
+  }
+
   return `
     Find ${gpuBrand} graphics cards matching:
     - PCIe ${systemReqs.pciVersion} support
     - TDP range ${systemReqs.tdpBudget}W max
-    - Price range $${(budget * 0.25).toFixed(0)} to $${(budget * 0.4).toFixed(0)}
+    - Price range $${(budget * 0.35).toFixed(0)} to $${(budget * 0.45).toFixed(0)}
     - Length under ${systemReqs.lengthLimit}mm
     - ${gpuBrand === 'NVIDIA' ? 'RTX/GTX series' : 'RX series'}
     - Optimized for ${systemReqs.cpuTier.toLowerCase()}-tier performance
@@ -260,11 +287,34 @@ export async function POST(req: Request) {
       searchTerm = "", 
       components,
       preferences 
-    } = await req.json();
+    }: RequestPayload = await req.json();
     
     debugLog('Request Parameters', { budget, page, components, preferences });
 
-    const gpuBrand = preferences?.gpuBrand || 'NVIDIA';
+    // Get GPU brand preference and handle integrated graphics case
+    const gpuBrand = preferences?.gpuBrand ?? null;
+    debugLog('GPU Brand Preference', { gpuBrand });
+
+    if (gpuBrand === 'Integrated') {
+      // Return early with integrated graphics analysis
+      const igpuAnalysis = analyzeIntegratedGraphics(components, budget);
+      return new NextResponse(JSON.stringify({
+        gpus: [],
+        totalCount: 0,
+        page,
+        itemsPerPage,
+        searchTerm,
+        budget,
+        integratedGraphics: igpuAnalysis,
+        systemInfo: {
+          hasIntegratedGraphics: igpuAnalysis.available,
+          integratedGraphicsName: igpuAnalysis.available ? igpuAnalysis.name : null
+        }
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
     
     // System requirements analysis
     const cpuTier = determinePerformanceTier(components.cpu);
@@ -284,6 +334,17 @@ export async function POST(req: Request) {
     // Analyze integrated graphics
     const igpuAnalysis = analyzeIntegratedGraphics(components, budget);
     
+    // Skip GPU search if no valid brand preference
+    if (!gpuBrand || (gpuBrand !== 'NVIDIA' && gpuBrand !== 'AMD')) {
+      return new NextResponse(JSON.stringify({
+        error: 'Invalid GPU brand preference',
+        details: 'Please select either NVIDIA or AMD as your GPU brand preference',
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Initialize AI services
     const embeddings = new OpenAIEmbeddings();
     const pinecone = new Pinecone({
@@ -299,25 +360,36 @@ export async function POST(req: Request) {
     const searchContext = generateSearchContext(components, budget, gpuBrand, systemReqs);
     debugLog('Search Context', searchContext);
 
+    if (!searchContext) {
+      return new NextResponse(JSON.stringify({
+        error: 'Invalid search context',
+        details: 'Unable to generate search parameters',
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const searchResults = await vectorStore.similaritySearch(
       searchContext + (searchTerm ? `\nAdditional criteria: ${searchTerm}` : ''),
       30
     );
     
     debugLog('Search Results Count', searchResults.length);
+    debugLog('Search Results Sample', searchResults.slice(0, 3));
 
     // Process results
     const gpus = searchResults
       .map(result => {
         const data = parseGPUData(result.pageContent);
-        
-        if (!data.Name || !data.Price || !data.Manufacturer?.toLowerCase().includes(gpuBrand.toLowerCase())) {
+     if (!data.Name || !data.Price || !data.Manufacturer?.toLowerCase().includes(gpuBrand.toLowerCase())) {
           return null;
         }
 
         const price = parseFloat(data.Price.replace(/[$,]/g, ''));
         const length = parseInt(data.Length) || 0;
         
+        // Budget and physical constraints check
         if (price < budget * 0.25 || price > budget * 0.4 || length > systemReqs.lengthLimit) {
           return null;
         }
@@ -325,9 +397,9 @@ export async function POST(req: Request) {
         const matchScore = calculateMatchScore(data, systemReqs, gpuBrand);
         
         return {
-          id: `gpu-${Date.now()}-${Math.random()}`,
+          id: `gpu-${data.Name.replace(/\s+/g, '-').toLowerCase()}-${Math.random().toString(36).substr(2, 9)}`,
           name: data.Name,
-          image: data['Image URL'],
+          image: data['Image URL'] || '',
           manufacturer: data.Manufacturer || gpuBrand,
           price,
           chipset: data.Chipset || 'Unknown',
@@ -345,7 +417,7 @@ export async function POST(req: Request) {
           score: matchScore,
           isRecommended: matchScore >= 80,
           compatibility: {
-            powerOk: parseInt(data.TDP) <= tdpBudget,
+            powerOk: parseInt(data.TDP) <= systemReqs.tdpBudget,
             lengthOk: length <= systemReqs.lengthLimit,
             tdpOk: parseInt(data.TDP) <= systemReqs.powerLimit
           },
@@ -358,68 +430,90 @@ export async function POST(req: Request) {
       .filter((gpu): gpu is NonNullable<typeof gpu> => gpu !== null)
       .sort((a, b) => b.score - a.score);
 
+    // Handle no results case
+    if (gpus.length === 0) {
+      return new NextResponse(JSON.stringify({
+        error: 'No compatible GPUs found',
+        details: 'No GPUs match your criteria. Try adjusting your budget or requirements.',
+        searchCriteria: {
+          budget: {
+            min: budget * 0.25,
+            max: budget * 0.4
+          },
+          brand: gpuBrand,
+          powerLimit: systemReqs.tdpBudget,
+          lengthLimit: systemReqs.lengthLimit
+        }
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Pagination
     const startIndex = (page - 1) * itemsPerPage;
     const paginatedGPUs = gpus.slice(startIndex, startIndex + itemsPerPage);
 
-// Prepare response
-const response = {
- gpus: paginatedGPUs,
- totalCount: gpus.length,
- page,
- itemsPerPage,
- searchTerm,
- budget,
- integratedGraphics: igpuAnalysis,
- systemInfo: {
-   cpuTier,
-   availablePower: tdpBudget,
-   maxLength: systemReqs.lengthLimit,
-   pciVersion: systemReqs.pciVersion,
-   totalBudget: budget,
-   allocatedBudget: {
-     min: budget * 0.25,
-     max: budget * 0.4
-   },
-   hasIntegratedGraphics: igpuAnalysis.available,
-   integratedGraphicsName: igpuAnalysis.available ? igpuAnalysis.name : null
- },
- searchCriteria: {
-   priceRange: {
-     min: budget * 0.25,
-     max: budget * 0.4
-   },
-   powerLimit: tdpBudget,
-   lengthLimit: systemReqs.lengthLimit,
-   features: gpuBrand === 'NVIDIA' 
-     ? ['DLSS', 'Ray Tracing', 'NVENC']
-     : ['FSR', 'Smart Access Memory', 'Anti-Lag']
- }
-};
+    // Prepare response
+    const response = {
+      gpus: paginatedGPUs,
+      totalCount: gpus.length,
+      page,
+      itemsPerPage,
+      searchTerm,
+      budget,
+      integratedGraphics: igpuAnalysis,
+      systemInfo: {
+        cpuTier,
+        availablePower: tdpBudget,
+        maxLength: systemReqs.lengthLimit,
+        pciVersion: systemReqs.pciVersion,
+        totalBudget: budget,
+        allocatedBudget: {
+          min: budget * 0.25,
+          max: budget * 0.4
+        },
+        hasIntegratedGraphics: igpuAnalysis.available,
+        integratedGraphicsName: igpuAnalysis.available ? igpuAnalysis.name : null,
+        selectedBrand: gpuBrand
+      },
+      searchCriteria: {
+        priceRange: {
+          min: budget * 0.25,
+          max: budget * 0.4
+        },
+        powerLimit: tdpBudget,
+        lengthLimit: systemReqs.lengthLimit,
+        features: gpuBrand === 'NVIDIA' 
+          ? ['DLSS', 'Ray Tracing', 'NVENC']
+          : ['FSR', 'Smart Access Memory', 'Anti-Lag']
+      }
+    };
 
-debugLog('Response Stats', {
- totalResults: response.totalCount,
- currentPage: response.page,
- resultsInPage: response.gpus.length,
- hasIntegratedGraphics: igpuAnalysis.available
-});
+    debugLog('Response Stats', {
+      totalResults: response.totalCount,
+      currentPage: response.page,
+      resultsInPage: response.gpus.length,
+      hasIntegratedGraphics: igpuAnalysis.available,
+      selectedBrand: gpuBrand
+    });
 
-return new NextResponse(JSON.stringify(response), {
- status: 200,
- headers: { 
-   'Content-Type': 'application/json',
-   'Cache-Control': 'no-store, max-age=0'
- },
-});
+    return new NextResponse(JSON.stringify(response), {
+      status: 200,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, max-age=0'
+      },
+    });
 
- } catch (error) {
-   console.error('Error:', error);
-   return new NextResponse(JSON.stringify({
-     error: 'Failed to process GPU recommendations',
-     details: error instanceof Error ? error.message : 'Unknown error occurred',
-   }), {
-     status: 500,
-     headers: { 'Content-Type': 'application/json' },
-   });
- }
+  } catch (error) {
+    console.error('Error:', error);
+    return new NextResponse(JSON.stringify({
+      error: 'Failed to process GPU recommendations',
+      details: error instanceof Error ? error.message : 'Unknown error occurred',
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }

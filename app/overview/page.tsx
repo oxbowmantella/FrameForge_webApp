@@ -1,26 +1,193 @@
 "use client";
 import React from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Settings2,
   Edit2,
-  HomeIcon,
   DownloadIcon,
+  Cpu,
+  MonitorIcon,
+  MemoryStick,
+  HardDrive,
+  Box,
+  Zap,
+  Fan,
+  Gauge,
+  DollarSign,
+  Percent,
+  ChevronRight,
+  Sparkles,
+  Clock,
+  Boxes,
+  Waves,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePCBuilderStore } from "@/hooks/usePCBuilderStore";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
-const PCComponentSummary = () => {
+// Custom Bento Grid Components
+const BentoGrid = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) => {
+  return (
+    <div className={cn("grid grid-cols-1 md:grid-cols-6 gap-6", className)}>
+      {children}
+    </div>
+  );
+};
+
+const BentoCard = ({
+  className,
+  title,
+  Icon,
+  children,
+}: {
+  className?: string;
+  title: string;
+  Icon?: any;
+  children: React.ReactNode;
+}) => {
+  return (
+    <div
+      className={cn(
+        "row-span-1 rounded-xl group/bento min-h-[200px] hover:shadow-xl transition duration-200 shadow-input dark:shadow-none p-6 dark:bg-black dark:border-white/[0.2] bg-white border border-transparent flex flex-col",
+        className
+      )}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-5 w-5 text-neutral-500" />}
+          <h3 className="font-semibold text-neutral-600 dark:text-neutral-200">
+            {title}
+          </h3>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+};
+
+function getBadgeIcon(key: string, componentType: string) {
+  switch (key) {
+    case "socket":
+      return <Cpu className="h-3 w-3" />;
+    case "cores":
+      return <Boxes className="h-3 w-3" />;
+    case "speed":
+    case "clock":
+      return <Clock className="h-3 w-3" />;
+    case "memory":
+    case "modules":
+      return <MemoryStick className="h-3 w-3" />;
+    case "capacity":
+      return <HardDrive className="h-3 w-3" />;
+    case "wattage":
+    case "tdp":
+      return <Zap className="h-3 w-3" />;
+    case "efficiency":
+      return <Sparkles className="h-3 w-3" />;
+    case "form":
+    case "formFactor":
+      return <Box className="h-3 w-3" />;
+    case "noise":
+      return <Waves className="h-3 w-3" />;
+    default:
+      return null;
+  }
+}
+
+function formatSpecValue(key: string, value: any): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return value.join(", ");
+    return Object.values(value).join(", ");
+  }
+  return String(value);
+}
+
+function ComponentContent({
+  component,
+  route,
+  formatPrice,
+}: {
+  component: any;
+  route: string;
+  formatPrice: (price: number) => string;
+}) {
   const router = useRouter();
-  const { components, budget, totalSpent } = usePCBuilderStore();
 
-  type ComponentKey = keyof typeof components;
+  if (!component) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center h-full min-h-[180px] bg-secondary/5 rounded-lg cursor-pointer hover:bg-secondary/10 transition-colors"
+        onClick={() => router.push(route)}
+      >
+        <p className="text-sm text-muted-foreground">Click to add component</p>
+      </div>
+    );
+  }
 
-  // Helper function to format price
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex gap-4 relative group">
+        <div className="relative w-20 h-20 bg-secondary/10 rounded-lg overflow-hidden flex-shrink-0">
+          <Image
+            src={component.image}
+            alt={component.name}
+            fill
+            className="object-contain"
+            sizes="80px"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{component.name}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {formatPrice(component.price)}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0"
+          onClick={() => router.push(route)}
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-4">
+        {component.specifications &&
+          Object.entries(component.specifications)
+            .slice(0, 3)
+            .map(
+              ([key, value]) =>
+                value && (
+                  <Badge
+                    key={key}
+                    variant="secondary"
+                    className="bg-secondary/10 text-foreground/80 flex items-center gap-1"
+                  >
+                    {getBadgeIcon(key, component.type)}
+                    {formatSpecValue(key, value)}
+                  </Badge>
+                )
+            )}
+      </div>
+    </div>
+  );
+}
+
+export default function PCComponentSummary() {
+  const router = useRouter();
+  const { components, budget, totalSpent, preferences } = usePCBuilderStore();
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -30,149 +197,135 @@ const PCComponentSummary = () => {
     }).format(price);
   };
 
-  // Helper function to format specification values
-  const formatSpecValue = (value: any): string => {
-    if (value === null || value === undefined) return "";
+  const percentageUsed = Math.round((totalSpent / budget) * 100);
+  const componentsCount = Object.values(components).filter(
+    (comp) => comp !== null
+  ).length;
 
-    // Handle objects (like dimensions)
-    if (typeof value === "object") {
-      if ("length" in value && "width" in value && "height" in value) {
-        return `${value.length}mm × ${value.width}mm × ${value.height}mm`;
-      }
-      return Object.values(value).join(", ");
-    }
-
-    // Handle arrays
-    if (Array.isArray(value)) {
-      return value.join(", ");
-    }
-
-    // Convert other types to string
-    return String(value);
-  };
-
-  // Component categories in display order with their routes
-  const componentOrder = [
-    { key: "cpu", label: "CPU", route: "/pc-builder/cpu" },
+  const gridItems = [
     {
-      key: "motherboard",
-      label: "Motherboard",
+      className: "col-span-6",
+      title: "Build Overview",
+      Icon: Gauge,
+      component: null,
+      content: (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <DollarSign className="h-8 w-8 mx-auto text-primary" />
+            <p className="text-xl font-semibold">{formatPrice(totalSpent)}</p>
+            <p className="text-sm text-muted-foreground">Total Spent</p>
+          </div>
+          <div className="text-center">
+            <Percent className="h-8 w-8 mx-auto text-primary" />
+            <p className="text-xl font-semibold">{percentageUsed}%</p>
+            <p className="text-sm text-muted-foreground">Budget Used</p>
+          </div>
+          <div className="text-center">
+            <Box className="h-8 w-8 mx-auto text-primary" />
+            <p className="text-xl font-semibold">{componentsCount}/8</p>
+            <p className="text-sm text-muted-foreground">Components</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      className: "col-span-3",
+      title: "CPU",
+      Icon: Cpu,
+      component: components.cpu,
+      route: "/pc-builder/cpu",
+    },
+    {
+      className: "col-span-3",
+      title: "Graphics Card",
+      Icon: MonitorIcon,
+      component: components.gpu,
+      route: "/pc-builder/gpu",
+    },
+    {
+      className: "col-span-2",
+      title: "Motherboard",
+      Icon: Settings2,
+      component: components.motherboard,
       route: "/pc-builder/motherboard",
     },
-    { key: "memory", label: "Memory", route: "/pc-builder/memory" },
-    { key: "gpu", label: "Graphics Card", route: "/pc-builder/gpu" },
-    { key: "storage", label: "Storage", route: "/pc-builder/storage" },
-    { key: "case", label: "Case", route: "/pc-builder/case" },
-    { key: "psu", label: "Power Supply", route: "/pc-builder/psu" },
-    { key: "cooler", label: "CPU Cooler", route: "/pc-builder/cooler" },
+    {
+      className: "col-span-2",
+      title: "Memory",
+      Icon: MemoryStick,
+      component: components.memory,
+      route: "/pc-builder/memory",
+    },
+    {
+      className: "col-span-2",
+      title: "Storage",
+      Icon: HardDrive,
+      component: components.storage,
+      route: "/pc-builder/storage",
+    },
+    {
+      className: "col-span-2",
+      title: "Case",
+      Icon: Box,
+      component: components.case,
+      route: "/pc-builder/case",
+    },
+    {
+      className: "col-span-2",
+      title: "Power Supply",
+      Icon: Zap,
+      component: components.psu,
+      route: "/pc-builder/psu",
+    },
+    {
+      className: "col-span-2",
+      title: "CPU Cooler",
+      Icon: Fan,
+      component: components.cpuCooler,
+      route: "/pc-builder/cooler",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      {/* Header Section */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="min-h-screen bg-background p-4 lg:p-8">
+      <div className="max-w-[1600px] mx-auto">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold">Your PC Build</h1>
+            <h1 className="text-3xl font-bold">Your PC Build</h1>
             <p className="text-muted-foreground">
-              Total: {formatPrice(totalSpent)} of {formatPrice(budget)} Budget
+              {formatPrice(totalSpent)} of {formatPrice(budget)} Budget
             </p>
           </div>
-
           <Button
             variant="outline"
-            onClick={() => {}}
             className="flex items-center gap-2 bg-black text-white"
+            onClick={() => {}}
           >
             <DownloadIcon className="h-4 w-4" /> Download
           </Button>
         </div>
-        {/* Components Grid */}
-        {componentOrder.map(({ key, label, route }) => {
-          const component = components[key as ComponentKey];
 
-          return (
-            <Card
-              key={key}
-              className={`transition-all duration-300 relative group ${
-                component ? "border-primary/20" : "border-dashed"
-              }`}
+        <BentoGrid>
+          {gridItems.map((item, idx) => (
+            <BentoCard
+              key={idx}
+              className={cn(item.className)}
+              title={item.title}
+              Icon={item.Icon}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-2">
-                  <Settings2 className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-semibold text-lg">{label}</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {component && (
-                    <Badge variant="secondary">
-                      {formatPrice(component.price)}
-                    </Badge>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => router.push(route)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {component ? (
-                  <div className="flex gap-4">
-                    <div className="relative w-24 h-24 bg-secondary/10 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image
-                        src={component.image}
-                        alt={component.name}
-                        fill
-                        className="object-contain"
-                        sizes="(max-width: 96px) 100vw, 96px"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {component.name}
-                      </p>
-                      {component.specifications && (
-                        <div className="mt-2 space-y-1">
-                          {Object.entries(component.specifications).map(
-                            ([key, value]) =>
-                              value && (
-                                <p
-                                  key={key}
-                                  className="text-xs text-muted-foreground truncate"
-                                >
-                                  {key.charAt(0).toUpperCase() + key.slice(1)}:{" "}
-                                  {formatSpecValue(value)}
-                                </p>
-                              )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="flex flex-col items-center justify-center h-24 bg-secondary/5 rounded-lg cursor-pointer hover:bg-secondary/10 transition-colors"
-                    onClick={() => router.push(route)}
-                  >
-                    <p className="text-sm text-muted-foreground">
-                      No {label} Selected
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Click to add
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+              {item.content ? (
+                item.content
+              ) : (
+                <ComponentContent
+                  component={item.component}
+                  route={item.route}
+                  formatPrice={formatPrice}
+                />
+              )}
+            </BentoCard>
+          ))}
+        </BentoGrid>
       </div>
     </div>
   );
-};
-
-export default PCComponentSummary;
+}

@@ -61,12 +61,18 @@ const PCShowcase = () => {
   const { setBudget, setSelectedType } = usePCBuilderStore();
   const [selectedPrice, setSelectedPrice] = useState(800);
 
+  const clearBuild = usePCBuilderStore((state) => state.clearBuild);
+
   // Get PC type based on price
   const getTypeFromPrice = (price: number): PCType => {
     if (price <= 1000) return pcTypes[0]; // Entry-Level
     if (price <= 2000) return pcTypes[1]; // Mid-Range
     return pcTypes[2]; // High-End
   };
+
+  useEffect(() => {
+    clearBuild();
+  }, []);
 
   // Initialize on mount
   useEffect(() => {
