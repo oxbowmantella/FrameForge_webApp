@@ -56,12 +56,12 @@ npm run dev
 
 ## Screenshots
 <div style="display: flex; justify-content: space-between;">
-  <img src="/1.png" alt="FrameForge Landing Page" style="width: 49%;" />
-  <img src="/2.png" alt="PC Builder Interface" style="width: 49%;" />
+  <img src="https://github.com/0xmetaschool/FrameForge/blob/main/public/1.png" alt="FrameForge Landing Page" style="width: 49%;" />
+  <img src="https://github.com/0xmetaschool/FrameForge/blob/main/public/1.png" alt="PC Builder Interface" style="width: 49%;" />
 </div>
 <div style="display: flex; justify-content: space-between;">
-  <img src="/3.png" alt="Component Selection" style="width: 49%;" />
-  <img src="/4.png" alt="Build Summary" style="width: 49%;" />
+  <img src="https://github.com/0xmetaschool/FrameForge/blob/main/public/1.png" alt="Component Selection" style="width: 49%;" />
+  <img src="https://github.com/0xmetaschool/FrameForge/blob/main/public/1.png" alt="Build Summary" style="width: 49%;" />
 </div>
 
 ## How to Use
