@@ -1,9 +1,8 @@
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 export async function generatePDF(elementId: string, filename: string) {
   try {
-    console.log('Starting PDF generation...');
+    console.log('Starting grid capture...');
     
     const element = document.getElementById(elementId);
     if (!element) {
@@ -11,71 +10,62 @@ export async function generatePDF(elementId: string, filename: string) {
       return;
     }
 
-    // Wait for all images to load
-    const images = element.getElementsByTagName('img');
-    await Promise.all(
-      Array.from(images).map(
-        (img) =>
-          new Promise((resolve) => {
-            if (img.complete) {
-              resolve(null);
-            } else {
-              img.onload = () => resolve(null);
-              img.onerror = () => resolve(null);
+    // Capture the grid with its exact dimensions
+    const canvas = await html2canvas(element, {
+      // Preserve exact layout
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+      // Use exact pixel ratio for accurate rendering
+      scale: window.devicePixelRatio,
+      // Don't modify anything
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: true,
+      // Ensure proper rendering of all elements
+      logging: true,
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.getElementById(elementId);
+        if (clonedElement) {
+          // Force visible state for all elements
+          const allElements = clonedElement.getElementsByTagName('*');
+          Array.from(allElements).forEach(el => {
+            const element = el as HTMLElement;
+            if (window.getComputedStyle(element).opacity === '0') {
+              element.style.opacity = '1';
             }
-          })
-      )
+          });
+        }
+      }
+    });
+
+    // Simple download as PNG
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          throw new Error('Failed to generate image');
+        }
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename.replace('.pdf', '.png');
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      },
+      'image/png',
+      1.0
     );
 
-    console.log('All images loaded, generating canvas...');
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: true,
-      backgroundColor: '#ffffff',
-      allowTaint: true,
-      foreignObjectRendering: true
-    });
-
-    console.log('Canvas generated, creating PDF...');
-
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    const pdf = new jsPDF({
-      orientation: 'p',
-      unit: 'mm',
-      format: 'a4',
-      hotfixes: ['px_scaling']
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-    // Generate PDF as blob
-    const pdfBlob = pdf.output('blob');
-    
-    // Create download link
-    const downloadUrl = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    
-    // Cleanup
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
-
-    console.log('PDF downloaded successfully');
     return true;
 
   } catch (error) {
-    console.error('Error in PDF generation:', error);
+    console.error('Error in grid capture:', error);
     throw error;
   }
 }

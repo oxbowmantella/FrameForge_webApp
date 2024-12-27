@@ -152,7 +152,6 @@ function ComponentContent({
             crossOrigin="anonymous"
             loading="eager"
             onError={(e) => {
-              // Fallback for failed images
               const imgElement = e.target as HTMLImageElement;
               imgElement.src = "/FrameForge.png";
             }}
@@ -212,13 +211,31 @@ export default function PCComponentSummary() {
 
   const handleDownload = async () => {
     try {
+      // Ensure we're capturing the exact grid element
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `PC-Build-${timestamp}.pdf`;
-      console.log("Downloading PDF...");
+      const filename = `PC-Build-${timestamp}.png`;
+
+      // Pre-load all images
+      const element = document.getElementById("pc-build-grid");
+      if (element) {
+        const images = Array.from(element.getElementsByTagName("img"));
+        await Promise.all(
+          images.map(
+            (img) =>
+              new Promise((resolve) => {
+                if (img.complete) resolve(null);
+                else {
+                  img.onload = () => resolve(null);
+                  img.onerror = () => resolve(null);
+                }
+              })
+          )
+        );
+      }
+
       await generatePDF("pc-build-grid", filename);
-      console.log("PDF Downloaded!");
     } catch (error) {
-      console.error("Error downloading PDF:", error);
+      console.error("Error capturing grid:", error);
     }
   };
 
