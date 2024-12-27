@@ -31,7 +31,7 @@ FrameForge is an AI-powered PC building assistant that helps users create custom
 ## Installation Steps
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/frameforge.git
+git clone https://github.com/0xmetaschool/FrameForge.git
 cd frameforge
 ```
 
