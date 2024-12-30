@@ -167,7 +167,6 @@ const evaluateCPU = (cpu: any, tierInfo: ReturnType<typeof getCPUTier>, performa
 };
 
 export async function POST(req: Request) {
-  console.log('🚀 Starting CPU route handler');
   
   try {
     if (!process.env.PINECONE_API_KEY || !process.env.OPENAI_API_KEY) {
@@ -177,10 +176,8 @@ export async function POST(req: Request) {
     const { budget, cpuBrand, page = 1 } = await req.json();
     const itemsPerPage = 10;
     
-    console.log('📥 Request:', { budget, cpuBrand, page });
 
     const tierInfo = getCPUTier(budget);
-    console.log('📊 Build Tier:', tierInfo);
 
     // Initialize AI services
     const embeddings = new OpenAIEmbeddings({
@@ -204,21 +201,12 @@ export async function POST(req: Request) {
       ${tierInfo.requirements}
     `.trim();
 
-    console.log('🔍 Query:', query);
 
     // Perform search
     const searchResults = await vectorStore.similaritySearch(query, 50);
-    console.log(`✨ Found ${searchResults.length} initial results`);
 
-    // Log initial results sample
-    console.log('\n📝 Initial Results Sample:');
     searchResults.slice(0, 5).forEach((result, index) => {
       const data = parseCPUData(result.pageContent);
-      console.log(`\nCPU ${index + 1}:`);
-      console.log(`Name: ${data.Name}`);
-      console.log(`Price: ${data.Price}`);
-      console.log(`Clock: ${data['Performance Core Clock'] || data['Core Clock']}`);
-      console.log(`Boost: ${data['Performance Core Boost Clock'] || data['Boost Clock']}`);
     });
 
     // Process all CPUs
@@ -226,17 +214,10 @@ export async function POST(req: Request) {
       .map(result => {
         const data = parseCPUData(result.pageContent);
         const price = parseFloat(data.Price?.replace(/[$,]/g, '') || '0');
-        
-        // Log processing details
-        console.log('\n🔄 Processing CPU:');
-        console.log(`Name: ${data.Name}`);
-        console.log(`Raw Price: ${data.Price}`);
-        console.log(`Parsed Price: ${price}`);
 
         // Skip invalid CPUs
         if (!price || !data.Name || 
             (cpuBrand && !data.Manufacturer?.toLowerCase().includes(cpuBrand.toLowerCase()))) {
-          console.log('❌ Skipping: Invalid price or brand mismatch');
           return null;
         }
 
@@ -274,7 +255,6 @@ export async function POST(req: Request) {
 
         // Calculate performance score
         const performanceScore = calculatePerformanceScore(cpu);
-        console.log(`Performance Score: ${performanceScore}`);
 
         // Generate recommendation
         cpu.recommendation = evaluateCPU(cpu, tierInfo, performanceScore);
@@ -283,7 +263,6 @@ export async function POST(req: Request) {
       })
       .filter((cpu): cpu is CPUResponse => cpu !== null);
 
-    console.log(`✅ Processed ${cpus.length} valid CPUs`);
 
     // Sort by performance score
     cpus.sort((a, b) => b.recommendation.performanceScore - a.recommendation.performanceScore);

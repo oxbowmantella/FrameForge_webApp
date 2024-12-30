@@ -77,13 +77,6 @@ const GPU_TIERS = {
   }
 } as const;
 
-// Logging utility
-const debugLog = (step: string, data: any) => {
-  console.group(`🔄 ${step}`);
-  console.log(JSON.stringify(data, null, 2));
-  console.timeStamp();
-  console.groupEnd();
-};
 
 // Analyze integrated graphics capabilities
 const analyzeIntegratedGraphics = (components: any, budget: number): IGPUAnalysis => {
