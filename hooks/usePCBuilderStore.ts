@@ -2,14 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PCBuildState, PCPart } from '@/types/pc-builder';
 
-// Logging utility
-const logStateChange = (action: string, data: any) => {
-  console.group(`🔄 PC Builder Store Update: ${action}`);
-  console.log('Data:', data);
-  console.log('Timestamp:', new Date().toISOString());
-  console.groupEnd();
-};
-
 // Extended PCBuildState type
 interface ExtendedPCBuildState extends PCBuildState {
   preferences: {
@@ -48,8 +40,6 @@ const calculateTotalSpent = (components: ExtendedPCBuildState['components']): nu
   const total = Object.values(components).reduce((total, component) => {
     return total + (component?.price || 0);
   }, 0);
-  
-  logStateChange('Calculate Total Spent', { total, components });
   return total;
 };
 
@@ -70,31 +60,15 @@ export const usePCBuilderStore = create(
     (set, get) => ({
       ...defaultState,
 
-      logStoreState: () => {
-        const state = get();
-        console.group('📦 PC Builder Store - Complete State');
-        console.log(state);
-        console.groupEnd();
-      },
-
       setBudget: (budget: number) => {
-        logStateChange('Set Budget', { budget });
         set({ budget });
       },
 
       setSelectedType: (type: string) => {
-        logStateChange('Set Selected Type', { type });
         set({ selectedType: type });
       },
 
       setComponent: (componentType, component) => {
-        console.log("Current State : ", component);
-        
-        logStateChange('Set Component', { 
-          type: componentType, 
-          component,
-          previousComponent: get().components[componentType]
-        });
         
         set((state) => {
           const newComponents = {
@@ -103,10 +77,6 @@ export const usePCBuilderStore = create(
           };
           const newTotal = calculateTotalSpent(newComponents);
           
-          logStateChange('Update Total After Component Change', { 
-            previousTotal: state.totalSpent,
-            newTotal
-          });
           
           return {
             ...state,
@@ -117,10 +87,6 @@ export const usePCBuilderStore = create(
       },
 
       setCPUBrand: (brand) => {
-        logStateChange('Set CPU Brand', { 
-          previousBrand: get().preferences.cpuBrand,
-          newBrand: brand 
-        });
         
         set((state) => ({
           ...state,
@@ -132,11 +98,7 @@ export const usePCBuilderStore = create(
       },
 
       setGPUBrand: (brand) => {
-        logStateChange('Set GPU Brand', { 
-          previousBrand: get().preferences.gpuBrand,
-          newBrand: brand 
-        });
-        
+      
         set((state) => ({
           ...state,
           preferences: {
@@ -147,11 +109,7 @@ export const usePCBuilderStore = create(
       },
 
       setHasCPUCooler: (hasCooler) => {
-        logStateChange('Set Has CPU Cooler', { 
-          previous: get().preferences.hasCPUCooler,
-          new: hasCooler 
-        });
-        
+      
         set((state) => ({
           ...state,
           preferences: {
@@ -162,10 +120,7 @@ export const usePCBuilderStore = create(
       },
 
       setHasIntegratedGraphics: (hasIntegrated) => {
-        logStateChange('Set Has Integrated Graphics', { 
-          previous: get().preferences.hasIntegratedGraphics,
-          new: hasIntegrated 
-        });
+      
         
         set((state) => ({
           ...state,
@@ -177,10 +132,7 @@ export const usePCBuilderStore = create(
       },
 
       clearBuild: () => {
-        logStateChange('Clear Build', { 
-          previousState: get(),
-          newState: defaultState 
-        });
+      
         
         set(defaultState);
       },
@@ -189,11 +141,7 @@ export const usePCBuilderStore = create(
         const state = get();
         const remaining = state.budget - state.totalSpent;
         
-        logStateChange('Get Remaining Budget', { 
-          budget: state.budget,
-          spent: state.totalSpent,
-          remaining 
-        });
+      
         
         return remaining;
       },
@@ -202,10 +150,7 @@ export const usePCBuilderStore = create(
         const state = get();
         const isSelected = state.components[componentType] !== null;
         
-        logStateChange('Check Component Selected', { 
-          componentType,
-          isSelected 
-        });
+      
         
         return isSelected;
       }

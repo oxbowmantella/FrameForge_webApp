@@ -3,10 +3,6 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/community/vectorstores/pinecone";
 
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
-};
 
 // Helper function to parse the pageContent string into an object
 const parsePageContent = (content: string) => {
@@ -19,8 +15,6 @@ const parsePageContent = (content: string) => {
       result[key.trim()] = valueParts.join(':').trim();
     }
   });
-  
-  debugLog('Parsed Content', result);
   return result;
 };
 
@@ -148,11 +142,8 @@ const generateStorageRecommendation = (
 export async function POST(req: Request) {
   try {
     const { budget, page = 1, itemsPerPage = 10, searchTerm = "", motherboard } = await req.json();
-    debugLog('Request Parameters', { budget, page, itemsPerPage, searchTerm, motherboard });
-
     const requirements = calculateStorageRequirements(budget);
-    debugLog('Storage Requirements', requirements);
-
+ 
     // Initialize our AI and vector store
     const embeddings = new OpenAIEmbeddings();
     const pinecone = new Pinecone({
@@ -181,11 +172,7 @@ export async function POST(req: Request) {
       ${searchTerm}
     `.trim();
 
-    debugLog('Search String', searchString);
-
     const searchResults = await vectorStore.similaritySearch(searchString, 50);
-    debugLog('Search Results Count', searchResults.length);
-
     // Process and parse the results
     const storageDevices = searchResults
       .map((result) => {
@@ -227,8 +214,6 @@ export async function POST(req: Request) {
       })
       .filter((storage): storage is NonNullable<typeof storage> => storage !== null)
       .sort((a, b) => b.performanceScore - a.performanceScore);
-
-    debugLog('Processed Storage Devices', storageDevices.length);
 
     if (storageDevices.length === 0) {
       return new NextResponse(JSON.stringify({

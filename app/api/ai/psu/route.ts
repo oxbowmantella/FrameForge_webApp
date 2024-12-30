@@ -23,11 +23,6 @@ interface SystemComponents {
   storage?: any;
 }
 
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
-};
-
 const calculateSystemPower = (components: SystemComponents) => {
   const powerBreakdown = {
     basePower: 50,  // Base system power (motherboard, fans)
@@ -158,14 +153,10 @@ const parsePageContent = (content: string) => {
 export async function POST(req: Request) {
   try {
     const { budget, page = 1, itemsPerPage = 10, searchTerm = "", components } = await req.json();
-    debugLog('Request Parameters', { budget, components });
-
+   
     // Calculate power requirements
     const powerRequirements = calculateSystemPower(components);
     const requiredConnectors = getRequiredConnectors(components);
-
-    debugLog('Power Requirements', powerRequirements);
-    debugLog('Required Connectors', requiredConnectors);
 
     const embeddings = new OpenAIEmbeddings();
     const pinecone = new Pinecone({
@@ -188,8 +179,6 @@ export async function POST(req: Request) {
       80 Plus efficiency
       ${searchTerm}
     `.trim();
-
-    debugLog('Search String', searchString);
 
     const searchResults = await vectorStore.similaritySearch(searchString, 50);
     

@@ -3,11 +3,6 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/community/vectorstores/pinecone";
 
-// Debug logging utility
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
-};
 
 // Types
 interface CoolingRequirements {
@@ -202,11 +197,9 @@ const generateRecommendationReasons = (
 export async function POST(req: Request) {
   try {
     const { budget, components, page = 1, itemsPerPage = 10, searchTerm = "" } = await req.json();
-    debugLog('Request Parameters', { budget, components, page, itemsPerPage, searchTerm });
 
     // Calculate cooling requirements
     const coolingReq = calculateCoolingRequirements(components);
-    debugLog('Cooling Requirements', coolingReq);
 
     // Calculate budget allocation
     const minBudget = coolingReq.stockCoolerAssessment.recommendationType === 'Critical' 
@@ -244,11 +237,9 @@ export async function POST(req: Request) {
       ${searchTerm}
     `.trim();
 
-    debugLog('Search String', searchString);
 
     // Perform search
     const searchResults = await vectorStore.similaritySearch(searchString, 50);
-    debugLog('Initial Results Count', searchResults.length);
 
     // Process results
     const coolers = searchResults
@@ -326,7 +317,6 @@ export async function POST(req: Request) {
       cooler.isRecommended = true;
     });
 
-    debugLog('Processed Results Count', coolers.length);
 
     // Handle no results
     if (coolers.length === 0) {
@@ -359,12 +349,6 @@ export async function POST(req: Request) {
         stockCoolerAssessment: coolingReq.stockCoolerAssessment
       }
     };
-
-    debugLog('Final Response Stats', {
-      totalResults: response.totalCount,
-      currentPage: response.page,
-      resultsInPage: response.coolers.length
-    });
 
     return new NextResponse(JSON.stringify(response), {
       status: 200,

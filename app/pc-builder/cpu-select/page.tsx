@@ -16,27 +16,13 @@ const CpuBrandSelector = () => {
   const handleSelectBrand = (brand: "amd" | "intel", e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("Selecting brand:", brand);
     setSelectedBrand(brand);
   };
 
   const handleNext = () => {
     if (selectedBrand) {
-      console.log("Setting CPU brand in store:", {
-        selectedBrand: selectedBrand.toUpperCase(),
-      });
-
       // Set the CPU brand in store
       setCPUBrand(selectedBrand.toUpperCase() as "AMD" | "Intel");
-
-      // Verify the stored value
-      setTimeout(() => {
-        const currentPreferences = usePCBuilderStore.getState().preferences;
-        console.log("Verified store values after setting:", {
-          storedCPUBrand: currentPreferences.cpuBrand,
-          allPreferences: currentPreferences,
-        });
-      }, 0);
 
       router.push("/pc-builder/cpu");
     }

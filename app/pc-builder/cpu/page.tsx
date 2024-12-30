@@ -211,7 +211,6 @@ export default function CPUSelector() {
   };
 
   const handleConfirmSelection = () => {
-    console.log("Selected CPU:", selectedCPU);
     if (selectedCPU) {
       router.push("/pc-builder/motherboard");
     }

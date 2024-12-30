@@ -22,11 +22,6 @@ interface RequestPayload {
   searchTerm?: string;
 }
 
-// Debug logging utility
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
-};
 
 // Get budget tier constraints
 const getMotherboardBudgetTier = (totalBudget: number) => {
@@ -218,11 +213,9 @@ export async function POST(req: Request) {
       searchTerm = "" 
     }: RequestPayload = await req.json();
 
-    debugLog('Request Parameters', { budget, cpuBrand, selectedCPU, page, itemsPerPage, searchTerm });
-
+ 
     const tierInfo = getMotherboardBudgetTier(budget);
-    debugLog('Budget Tier Info', tierInfo);
-
+  
     const embeddings = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_API_KEY
     });
@@ -247,11 +240,9 @@ export async function POST(req: Request) {
       ${searchTerm}
     `.trim();
 
-    debugLog('Search String', searchString);
 
     const searchResults = await vectorStore.similaritySearch(searchString, 50);
-    debugLog('Initial Results Count', searchResults.length);
-
+   
     const motherboards = searchResults
       .map(result => {
         const data = parseMotherboardData(result.pageContent);
@@ -307,8 +298,7 @@ export async function POST(req: Request) {
       )
       .sort((a, b) => b.score - a.score);
 
-    debugLog('Processed Motherboards Count', motherboards.length);
-
+   
     if (motherboards.length === 0) {
       return new NextResponse(JSON.stringify({
         error: 'No compatible motherboards found',
@@ -341,12 +331,7 @@ export async function POST(req: Request) {
       }
     };
 
-    debugLog('Final Response Stats', {
-      totalResults: response.totalCount,
-      currentPage: response.page,
-      resultsInPage: response.motherboards.length
-    });
-
+ 
     return new NextResponse(JSON.stringify(response), {
       status: 200,
       headers: { 

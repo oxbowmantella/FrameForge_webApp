@@ -2,7 +2,6 @@ import html2canvas from 'html2canvas';
 
 export async function generatePDF(elementId: string, filename: string) {
   try {
-    console.log('Starting grid capture...');
     
     const element = document.getElementById(elementId);
     if (!element) {

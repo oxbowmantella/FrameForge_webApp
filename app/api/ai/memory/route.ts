@@ -3,10 +3,7 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/community/vectorstores/pinecone";
 
-const debugLog = (step: string, data: any) => {
-  console.log(`\n=== ${step} ===`);
-  console.log(typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
-};
+
 
 const parseMemoryData = (content: string) => {
   try {
@@ -20,7 +17,6 @@ const parseMemoryData = (content: string) => {
       }
     });
 
-    debugLog('Parsed Memory Data', data);
     return data;
   } catch (error) {
     console.error('Error parsing memory data:', error);
@@ -35,7 +31,6 @@ const isMemoryCompatible = (memoryData: Record<string, string>, motherboard: any
   // Check if it's desktop memory (DIMM)
   const formFactor = memoryData['Form Factor']?.toLowerCase() || '';
   if (!formFactor.includes('dimm') || formFactor.includes('sodimm')) {
-    debugLog('Filtered out - Wrong form factor', formFactor);
     return false;
   }
 
@@ -49,10 +44,7 @@ const isMemoryCompatible = (memoryData: Record<string, string>, motherboard: any
     const memoryDDR = memoryType.match(/(ddr\d)/i)?.[1]?.toLowerCase();
     
     if (supportedDDR && memoryDDR && supportedDDR !== memoryDDR) {
-      debugLog('Filtered out - Incompatible DDR generation', {
-        supported: supportedDDR,
-        memory: memoryDDR
-      });
+    
       return false;
     }
   }
@@ -96,8 +88,6 @@ const calculatePerformanceScore = (memory: any, motherboard: any) => {
 export async function POST(req: Request) {
   try {
     const { budget, page = 1, itemsPerPage = 10, searchTerm = "", motherboard, cpu } = await req.json();
-    debugLog('Request Parameters', { budget, motherboard, cpu, page, itemsPerPage });
-
     const embeddings = new OpenAIEmbeddings();
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!
@@ -119,10 +109,8 @@ export async function POST(req: Request) {
       ${searchTerm}
     `.trim();
 
-    debugLog('Search String', searchString);
 
     const searchResults = await vectorStore.similaritySearch(searchString, 100);
-    debugLog('Initial Results Count', searchResults.length);
 
     const processedMemory = searchResults
       .map(result => {
@@ -180,8 +168,6 @@ export async function POST(req: Request) {
       })
       .filter((mem): mem is NonNullable<typeof mem> => mem !== null)
       .sort((a, b) => b.score - a.score);
-
-    debugLog('Processed Memory Count', processedMemory.length);
 
     const response = {
       memory: processedMemory.slice((page - 1) * itemsPerPage, page * itemsPerPage),
