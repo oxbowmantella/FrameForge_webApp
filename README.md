@@ -2,7 +2,7 @@
 FrameForge is an AI-powered PC building assistant that helps users create custom computer builds based on their budget and requirements. Using advanced component matching and compatibility checking, FrameForge ensures optimal part selection while maximizing performance within your budget constraints.
 
 ## Live Demo
-[Live App Demo](https://frame-forge-beta.vercel.app/)
+[Live App Demo](https://frame-forge-metaschool.vercel.app/)
 
 ## Features
 - Smart budget allocation across components
